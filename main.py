@@ -210,7 +210,7 @@ async def orquestador(request: Request):
         )
         data = r.json()
         if "content" not in data:
-            return JSONResponse({"tipo": "error", "mensaje": "Error al clasificar."})
+            return JSONResponse({"tipo": "error", "mensaje": str(data)})
 
         respuesta = data["content"][0]["text"].strip()
 
