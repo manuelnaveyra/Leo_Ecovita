@@ -179,18 +179,20 @@ IMPORTANTE:
 async def orquestador(request: Request):
     body = await request.json()
     contact_id = str(body.get("contact_id", ""))
-    mensaje = body.get("mensaje_usuario", "")
 
-    if not contact_id or not mensaje:
-        return JSONResponse({"tipo": "error", "mensaje": "Faltan datos."})
+if not contact_id:
+    return JSONResponse({"tipo": "error", "mensaje": "Faltan datos."})
 
-    # 1. Buscar historial en Supabase
-    historial = await get_historial(contact_id)
-    if len(historial) > 20:
-        historial = historial[-20:]
+# 1. Buscar historial en Supabase
+historial = await get_historial(contact_id)
+if len(historial) > 20:
+    historial = historial[-20:]
 
-    # 2. Agregar mensaje actual
-    mensajes = historial + [{"role": "user", "content": mensaje}]
+if not historial:
+    return JSONResponse({"tipo": "error", "mensaje": "Sin historial."})
+
+# 2. Usar historial directamente
+mensajes = historial
 
     # 3. Llamar a Claude
     async with httpx.AsyncClient(timeout=30) as client:
