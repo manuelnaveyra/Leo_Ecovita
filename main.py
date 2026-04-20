@@ -179,18 +179,16 @@ IMPORTANTE:
 async def orquestador(request: Request):
     body = await request.json()
     contact_id = str(body.get("contact_id", ""))
+    mensaje = body.get("mensaje_usuario", "")
 
-    if not contact_id:
+    if not contact_id or not mensaje:
         return JSONResponse({"tipo": "error", "mensaje": "Faltan datos."})
 
     historial = await get_historial(contact_id)
     if len(historial) > 20:
         historial = historial[-20:]
 
-    if not historial:
-        return JSONResponse({"tipo": "error", "mensaje": "Sin historial."})
-
-    mensajes = historial
+    mensajes = historial + [{"role": "user", "content": mensaje}]
 
     async with httpx.AsyncClient(timeout=30) as client:
         r = await client.post(
@@ -234,6 +232,7 @@ async def orquestador(request: Request):
             "mensaje": None
         })
     else:
+        historial.append({"role": "user", "content": mensaje})
         historial.append({"role": "assistant", "content": respuesta})
         await guardar_historial(contact_id, historial)
 
