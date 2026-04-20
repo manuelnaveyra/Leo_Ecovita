@@ -181,20 +181,17 @@ async def orquestador(request: Request):
     contact_id = str(body.get("contact_id", ""))
 
     if not contact_id:
-    return JSONResponse({"tipo": "error", "mensaje": "Faltan datos."})
+        return JSONResponse({"tipo": "error", "mensaje": "Faltan datos."})
 
-    # 1. Buscar historial en Supabase
     historial = await get_historial(contact_id)
     if len(historial) > 20:
-    historial = historial[-20:]
+        historial = historial[-20:]
 
     if not historial:
-    return JSONResponse({"tipo": "error", "mensaje": "Sin historial."})
+        return JSONResponse({"tipo": "error", "mensaje": "Sin historial."})
 
-# 2. Usar historial directamente
-mensajes = historial
+    mensajes = historial
 
-    # 3. Llamar a Claude
     async with httpx.AsyncClient(timeout=30) as client:
         r = await client.post(
             "https://api.anthropic.com/v1/messages",
@@ -216,11 +213,9 @@ mensajes = historial
 
         respuesta = data["content"][0]["text"].strip()
 
-    # 4. ¿Es categoría o pregunta?
     es_categoria = bool(re.match(r'^[ABCDE]$', respuesta.upper()))
 
     if es_categoria:
-        # Guardar intencion_contacto en Supabase
         async with httpx.AsyncClient() as client:
             await client.patch(
                 f"{SUPABASE_URL}/rest/v1/conversaciones",
@@ -239,8 +234,6 @@ mensajes = historial
             "mensaje": None
         })
     else:
-        # Es pregunta aclaratoria — guardar en historial
-        historial.append({"role": "user", "content": mensaje})
         historial.append({"role": "assistant", "content": respuesta})
         await guardar_historial(contact_id, historial)
 
@@ -249,3 +242,8 @@ mensajes = historial
             "intencion_contacto": None,
             "mensaje": respuesta
         })
+
+
+@app.get("/")
+async def health():
+    return {"status": "Leo activo"}
