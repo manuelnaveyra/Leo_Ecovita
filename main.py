@@ -180,15 +180,15 @@ async def orquestador(request: Request):
     body = await request.json()
     contact_id = str(body.get("contact_id", ""))
 
-if not contact_id:
+    if not contact_id:
     return JSONResponse({"tipo": "error", "mensaje": "Faltan datos."})
 
-# 1. Buscar historial en Supabase
-historial = await get_historial(contact_id)
-if len(historial) > 20:
+    # 1. Buscar historial en Supabase
+    historial = await get_historial(contact_id)
+    if len(historial) > 20:
     historial = historial[-20:]
 
-if not historial:
+    if not historial:
     return JSONResponse({"tipo": "error", "mensaje": "Sin historial."})
 
 # 2. Usar historial directamente
