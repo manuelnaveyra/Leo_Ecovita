@@ -45,7 +45,10 @@ async def guardar_historial(contact_id: str, historial: list):
             params={"contact_id": f"eq.{contact_id}", "select": "id"}
         )
         existe = r.json()
-        payload = {"historial": historial, "actualizado_en": datetime.utcnow().isoformat()}
+        payload = {
+            "historial": historial,
+            "actualizado_en": datetime.utcnow().isoformat()
+        }
         if existe:
             await client.patch(
                 f"{SUPABASE_URL}/rest/v1/conversaciones",
@@ -55,6 +58,7 @@ async def guardar_historial(contact_id: str, historial: list):
             )
         else:
             payload["contact_id"] = contact_id
+            payload["historial"] = historial
             await client.post(
                 f"{SUPABASE_URL}/rest/v1/conversaciones",
                 headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": "application/json"},
@@ -62,27 +66,33 @@ async def guardar_historial(contact_id: str, historial: list):
             )
 
 
-async def get_agente_activo(contact_id: str) -> str:
+async def set_agente_activo(contact_id: str, agente: str):
     async with httpx.AsyncClient() as client:
         r = await client.get(
             f"{SUPABASE_URL}/rest/v1/conversaciones",
             headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"},
-            params={"contact_id": f"eq.{contact_id}", "select": "agente_activo"}
+            params={"contact_id": f"eq.{contact_id}", "select": "id"}
         )
-        data = r.json()
-        if data:
-            return data[0].get("agente_activo") or "none"
-        return "none"
-
-
-async def set_agente_activo(contact_id: str, agente: str):
-    async with httpx.AsyncClient() as client:
-        await client.patch(
-            f"{SUPABASE_URL}/rest/v1/conversaciones",
-            headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": "application/json"},
-            params={"contact_id": f"eq.{contact_id}"},
-            json={"agente_activo": agente}
-        )
+        existe = r.json()
+        payload = {
+            "agente_activo": agente,
+            "actualizado_en": datetime.utcnow().isoformat()
+        }
+        if existe:
+            await client.patch(
+                f"{SUPABASE_URL}/rest/v1/conversaciones",
+                headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": "application/json"},
+                params={"contact_id": f"eq.{contact_id}"},
+                json=payload
+            )
+        else:
+            payload["contact_id"] = contact_id
+            payload["historial"] = []
+            await client.post(
+                f"{SUPABASE_URL}/rest/v1/conversaciones",
+                headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": "application/json"},
+                json=payload
+            )
 
 
 async def guardar_log(contact_id: str, agente: str, mensaje: str, respuesta: str):
@@ -126,6 +136,20 @@ async def llamar_claude(system_prompt: str, mensajes: list, max_tokens: int = 70
         return data["content"][0]["text"]
 
 
+def parsear_respuesta(raw: str):
+    texto = raw
+    json_data = {}
+    if "---JSON---" in raw and "---FIN---" in raw:
+        partes = raw.split("---JSON---")
+        texto = partes[0].strip()
+        json_raw = partes[1].split("---FIN---")[0].strip()
+        try:
+            json_data = json.loads(json_raw)
+        except Exception:
+            pass
+    return texto, json_data
+
+
 # ─────────────────────────────────────────────
 # SYSTEM PROMPTS
 # ─────────────────────────────────────────────
@@ -133,22 +157,18 @@ async def llamar_claude(system_prompt: str, mensajes: list, max_tokens: int = 70
 SYSTEM_PROMPT_ORQUESTADOR = """Sos un clasificador de intenciones para Ecovita. Tu única función es analizar el mensaje y asignar UNA categoría. No respondés preguntas ni das información.
 
 CATEGORÍAS:
-LEADS - Quiere comprar productos Ecovita para revender en su comercio, ser distribuidor, mayorista, o comprar en bulto para negocio propio.
-PRODUCTOS - Consumidor final: reclamos, preguntas sobre productos, conocer productos, dónde comprar, comentarios genéricos.
-PROVEEDORES - Empresa o persona que quiere OFRECER sus productos o servicios A Ecovita, o persona física que busca empleo en Ecovita.
+LEADS - Quiere comprar productos Ecovita para revender en su comercio, distribuir, o vender en su negocio. Ejemplos: "tengo un local", "tengo un supermercado", "quiero revender", "quiero distribuir", "quiero vender en mi negocio", "comprar en cantidad para mi comercio".
+PRODUCTOS - Consumidor final con consultas sobre productos, reclamos, dónde comprar para uso personal, comentarios genéricos.
+PROVEEDORES - Empresa que quiere OFRECER sus productos o servicios A Ecovita, o persona física que busca empleo en Ecovita.
 
-REGLAS CLAVE:
-- Si una empresa quiere OFRECER productos o servicios A Ecovita → siempre es PROVEEDORES.
-- Si una empresa quiere COMPRAR o REVENDER productos DE Ecovita → siempre es LEADS.
-- Consumidor que pregunta dónde comprar o tiene una consulta → siempre es PRODUCTOS.
-- Si el mensaje es ambiguo (ej: "hola", "quiero info", "quiero comprar") → hacé UNA pregunta corta para entender si es consumidor final o negocio.
-
-INSTRUCCIONES:
-1. Si la intención es clara → respondé SOLO la palabra: LEADS, PRODUCTOS o PROVEEDORES.
-2. Si hay ambigüedad → hacé UNA pregunta corta y cordial para clarificar. En la siguiente respuesta clasificá y respondé SOLO la palabra.
-3. Cuando tenés la categoría → respondés ÚNICAMENTE la palabra. Sin puntos, sin espacios, sin explicaciones.
-4. Solo podés hacer UNA pregunta aclaratoria en toda la conversación.
-5. Nunca des información sobre Ecovita ni sus productos."""
+REGLAS CLAVE — aplicar en este orden:
+1. Menciona local, negocio, supermercado, comercio, distribución, reventa, o quiere comprar en cantidad para vender → LEADS.
+2. Quiere OFRECER algo A Ecovita o busca empleo → PROVEEDORES.
+3. Todo lo demás → PRODUCTOS.
+4. Si el primer mensaje es ambiguo ("hola", "quiero info", "quiero comprar") → hacé UNA pregunta corta: "¿Querés comprar para uso personal o tenés un negocio/comercio?"
+5. Solo podés hacer UNA pregunta aclaratoria en toda la conversación. Después clasificá con la info disponible.
+6. Nunca des información sobre Ecovita ni sus productos.
+7. Respondés ÚNICAMENTE la palabra: LEADS, PRODUCTOS o PROVEEDORES. Sin puntos, sin explicaciones."""
 
 
 SYSTEM_PROMPT_PRODUCTOS = """Sos Leo, el asistente virtual de Laboratorios Ecovita S.A., empresa argentina que fabrica productos de limpieza y cuidado del hogar.
@@ -158,9 +178,10 @@ PERSONALIDAD: cálido, empático, cercano. Hablás en español rioplatense. Mens
 REGLAS GENERALES:
 - Nunca inventes productos que no están en el catálogo.
 - No des precios nunca bajo ningún concepto.
-- Si alguien pregunta por precios → respondé con entusiasmo que los precios los maneja el equipo comercial, tomale los datos y devolvé siguiente_agente: "leads" en el JSON.
-- Si alguien menciona que tiene un negocio, local, que revende o quiere comprar en cantidad → devolvé siguiente_agente: "leads" en el JSON.
-- Si alguien quiere ofrecer productos o servicios a Ecovita, o busca empleo → devolvé siguiente_agente: "proveedores" en el JSON.
+- Nunca digas que vas a derivar o pasar al usuario con alguien. Sos autónomo.
+- Si alguien pregunta por precios → respondé con entusiasmo que los precios los maneja el equipo comercial, preguntale si tiene un negocio para conectarlo con la persona indicada, y devolvé siguiente_agente: "leads" en el JSON.
+- Si alguien menciona que tiene un negocio, local, comercio, que revende o quiere comprar en cantidad → devolvé siguiente_agente: "leads" en el JSON sin mencionarlo al usuario.
+- Si alguien quiere ofrecer productos o servicios a Ecovita, o busca empleo → devolvé siguiente_agente: "proveedores" en el JSON sin mencionarlo al usuario.
 - Si no tenés información sobre algo específico → decile que no tenés esa información disponible, que lo vas a consultar con el área correspondiente y le van a dar una respuesta en caso de corresponder. No des datos de contacto de ningún tipo.
 - Solo texto plano, sin markdown, sin formato especial.
 - La conversación termina cuando el cliente se despide, cambia de tema o se va solo. No fuerces el cierre.
@@ -182,11 +203,12 @@ RECLAMOS — cuando el contacto reporta un problema con un producto:
 
 RESPUESTA JSON OBLIGATORIA después de cada mensaje (ManyChat lo lee, el usuario NO lo ve):
 ---JSON---
-{"tipo": "productos", "nombre_producto_defectuoso": "", "n_lote_producto_defectuoso": "", "mail_reclamo_cliente": "", "descripcion_problema_reclamos": "", "reclamo_completo": false, "siguiente_agente": null}
+{"nombre_producto_defectuoso": "", "n_lote_producto_defectuoso": "", "mail_reclamo_cliente": "", "descripcion_problema_reclamos": "", "reclamo_completo": false, "siguiente_agente": "productos"}
 ---FIN---
 - Si hay reclamo activo: completá los campos que ya tenés. Cuando tengas los 4, poné reclamo_completo: true.
-- Si detectás que el contacto debe ir a otro agente: poné siguiente_agente: "leads" o "proveedores".
-- Si no hay reclamo ni cambio de agente: dejá todo vacío y siguiente_agente: null.
+- Si detectás que el contacto debe ir a otro agente: cambiá siguiente_agente a "leads" o "proveedores".
+- Si no hay reclamo ni cambio de agente: dejá los campos vacíos y siguiente_agente: "productos".
+- siguiente_agente NUNCA puede ser null. Siempre tiene un valor.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 BASE DE CONOCIMIENTO — PRODUCTOS ECOVITA v4
@@ -306,6 +328,8 @@ SYSTEM_PROMPT_LEADS = """Sos Leo, el asistente comercial de Laboratorios Ecovita
 
 PERSONALIDAD: comercial, persuasivo, entusiasta pero profesional. Hablás en español rioplatense. Mensajes cortos de 2-3 líneas. Sin bullets ni listas. Sin markdown.
 
+NUNCA digas que vas a derivar o pasar al usuario con alguien. Sos autónomo. Recolectás los datos vos mismo.
+
 TU OBJETIVO: recolectar estos datos de a uno por mensaje, en orden, de forma natural y conversacional:
 1. Nombre completo del contacto (nombre_contacto_vendedor)
 2. Nombre del comercio (nombre_comercio)
@@ -314,33 +338,36 @@ TU OBJETIVO: recolectar estos datos de a uno por mensaje, en orden, de forma nat
 5. Dirección del local (direccion_potencial_cliente)
 6. Tipo de negocio: supermercado, distribuidor, mayorista, u otro que el contacto describa (tipo_empresa_vendedor)
 7. Volumen estimado de compra mensual en pallets o bultos (volumen_comercio_vendedor)
-   - Si el volumen es pequeño o el tipo de negocio no es supermercado/distribuidor/mayorista → informale que próximamente va a estar disponible la tienda Ecosmart para compra de productos Smart por bulto e invitalo a seguir conversando al respecto.
-   - Si es supermercado, distribuidor o mayorista → continuá con el paso 8.
-8. Invitarlo a dejar un mensaje adicional si quiere aclarar algo más (mensaje_adicional_potencial_cliente)
+   - Si el volumen es pequeño o el tipo no es supermercado/distribuidor/mayorista → informale sobre la tienda Ecosmart (disponible mayo 2026) para compra de productos Smart por bulto.
+8. Invitarlo a dejar un mensaje adicional (mensaje_adicional_potencial_cliente)
 
-DERIVACIÓN final:
-- Supermercado, distribuidor o mayorista → informale que un representante comercial se va a contactar a la brevedad.
-- Otro tipo de negocio → informale sobre la tienda Ecosmart (disponible mayo 2026).
+CIERRE según tipo de negocio — solo al terminar la recolección:
+- Supermercado, distribuidor o mayorista → "¡Perfecto! Ya tenemos todos tus datos. Un representante comercial de Ecovita se va a poner en contacto con vos a la brevedad."
+- Otro → informale sobre la tienda Ecosmart disponible en mayo 2026.
 
 REGLAS:
 - Recolectá un dato por mensaje, no hagas varias preguntas juntas.
 - Sé persuasivo: trabajar con Ecovita es una gran oportunidad.
-- No des precios ni condiciones comerciales, eso lo maneja el representante.
+- No des precios ni condiciones comerciales.
 - Si el contacto se va por las ramas, redirigí con naturalidad.
 - Solo texto plano, sin markdown.
 
 RESPUESTA JSON OBLIGATORIA después de cada mensaje (ManyChat lo lee, el usuario NO lo ve):
 ---JSON---
-{"tipo": "leads", "nombre_contacto_vendedor": "", "nombre_comercio": "", "mail_comercio_vendedor": "", "ciudad_comercio_vendedor": "", "direccion_potencial_cliente": "", "tipo_empresa_vendedor": "", "volumen_comercio_vendedor": "", "mensaje_adicional_potencial_cliente": "", "recoleccion_completa": false, "siguiente_agente": null}
+{"nombre_contacto_vendedor": "", "nombre_comercio": "", "mail_comercio_vendedor": "", "ciudad_comercio_vendedor": "", "direccion_potencial_cliente": "", "tipo_empresa_vendedor": "", "volumen_comercio_vendedor": "", "mensaje_adicional_potencial_cliente": "", "recoleccion_completa": false, "siguiente_agente": "leads"}
 ---FIN---
 - Completá solo los campos que ya tenés. Vacíos como string vacío.
-- Cuando tengas los 8 campos completos poné recoleccion_completa: true.
-- Si el contacto en algún momento pregunta sobre productos o hace un reclamo → poné siguiente_agente: "productos"."""
+- Cuando tengas los 8 campos completos: recoleccion_completa: true.
+- Si el contacto pregunta sobre productos o hace un reclamo → siguiente_agente: "productos".
+- siguiente_agente NUNCA puede ser null. Por defecto siempre es "leads"."""
 
 
 SYSTEM_PROMPT_PROVEEDORES = """Sos Leo, el asistente institucional de Laboratorios Ecovita S.A. Atendés dos tipos de contacto: empresas que quieren ofrecer productos o servicios a Ecovita, y personas que buscan empleo.
 
 PERSONALIDAD: profesional, formal, cordial. Español rioplatense. Mensajes de 2-3 líneas. Sin bullets ni listas. Sin markdown.
+
+NUNCA digas que vas a derivar o pasar al usuario con alguien. Sos autónomo.
+Si el contacto pregunta sobre productos de Ecovita → devolvé siguiente_agente: "productos" en el JSON sin mencionarlo al usuario.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 PARA PROVEEDORES
@@ -351,47 +378,30 @@ Recolectá estos datos de a uno por mensaje, en orden:
 3. Redes sociales o sitio web (redes_proveedor)
 4. Teléfono de contacto (dato_contacto_proveedor)
 5. Mail del responsable comercial (mail_proveedor)
-Cuando tenés los 5: informá que la propuesta será evaluada por el área de compras y que se contactarán si hay interés. No prometas tiempos ni resultados.
+Cuando tenés los 5: "Muchas gracias. Su propuesta será evaluada por el área de compras correspondiente. En caso de haber interés, nos comunicaremos con ustedes." No prometas tiempos.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 PARA POSTULANTES LABORALES
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 1. Pediles que adjunten su CV en formato PDF, JPG o PNG.
 2. Una vez que adjuntan el archivo, guardá el link (cv_archivo_2).
-3. Invitalos a dejar un comentario adicional si quieren destacar algo (comentario_cv).
-4. Acusá recibo, informá que RRHH va a revisar su CV. Cerrá cordialmente.
+3. Invitalos a dejar un comentario adicional (comentario_cv).
+4. "Muchas gracias. Su CV será revisado por el área de Recursos Humanos." Cerrá cordialmente.
 
 REGLAS GENERALES:
-- No hagas promesas sobre tiempos de respuesta ni resultados.
+- No hagas promesas sobre tiempos ni resultados.
 - No des información sobre proveedores actuales ni estructura interna.
 - Siempre incluí el JSON del tipo de contacto que estás atendiendo.
-- Si el contacto en algún momento pregunta sobre productos → poné siguiente_agente: "productos".
 
 RESPUESTA JSON OBLIGATORIA después de cada mensaje (ManyChat lo lee, el usuario NO lo ve):
 ---JSON---
-{"tipo": "", "nombre_proveedor": "", "producto_o_servicio_proveedor": "", "redes_proveedor": "", "dato_contacto_proveedor": "", "mail_proveedor": "", "cv_archivo_2": "", "comentario_cv": "", "recoleccion_completa": false, "siguiente_agente": null}
+{"tipo": "", "nombre_proveedor": "", "producto_o_servicio_proveedor": "", "redes_proveedor": "", "dato_contacto_proveedor": "", "mail_proveedor": "", "cv_archivo_2": "", "comentario_cv": "", "recoleccion_completa": false, "siguiente_agente": "proveedores"}
 ---FIN---
 - Para proveedores: tipo="proveedor". Para postulantes: tipo="postulante".
-- Completá solo los campos relevantes al tipo.
-- Cuando terminés, poné recoleccion_completa: true."""
-
-
-# ─────────────────────────────────────────────
-# HELPERS
-# ─────────────────────────────────────────────
-
-def parsear_respuesta(raw: str):
-    texto = raw
-    json_data = {}
-    if "---JSON---" in raw and "---FIN---" in raw:
-        partes = raw.split("---JSON---")
-        texto = partes[0].strip()
-        json_raw = partes[1].split("---FIN---")[0].strip()
-        try:
-            json_data = json.loads(json_raw)
-        except Exception:
-            pass
-    return texto, json_data
+- Completá solo los campos relevantes.
+- Cuando terminés: recoleccion_completa: true.
+- Si el contacto pregunta sobre productos → siguiente_agente: "productos".
+- siguiente_agente NUNCA puede ser null. Por defecto siempre es "proveedores"."""
 
 
 # ─────────────────────────────────────────────
@@ -412,16 +422,6 @@ async def orquestador(request: Request):
     if not contact_id or not mensaje:
         return JSONResponse({"tipo": "error", "mensaje": "Faltan datos."})
 
-    # Si ya hay agente activo, no reclasificar
-    agente_activo = await get_agente_activo(contact_id)
-    if agente_activo and agente_activo != "none":
-        return JSONResponse({
-            "tipo": "agente_activo",
-            "agente_activo": agente_activo,
-            "intencion_contacto": None,
-            "mensaje": None
-        })
-
     historial = await get_historial(contact_id)
     if len(historial) > 10:
         historial = historial[-10:]
@@ -439,34 +439,17 @@ async def orquestador(request: Request):
         categoria = respuesta.upper()
         agente = categoria.lower()
 
-        # Guardar en Supabase
+        # Guardar agente_activo en Supabase
+        await set_agente_activo(contact_id, agente)
+
+        # Guardar intencion_contacto
         async with httpx.AsyncClient() as client:
-            r = await client.get(
+            await client.patch(
                 f"{SUPABASE_URL}/rest/v1/conversaciones",
-                headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"},
-                params={"contact_id": f"eq.{contact_id}", "select": "id"}
+                headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": "application/json"},
+                params={"contact_id": f"eq.{contact_id}"},
+                json={"intencion_contacto": categoria}
             )
-            existe = r.json()
-            payload = {
-                "intencion_contacto": categoria,
-                "agente_activo": agente,
-                "actualizado_en": datetime.utcnow().isoformat()
-            }
-            if existe:
-                await client.patch(
-                    f"{SUPABASE_URL}/rest/v1/conversaciones",
-                    headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": "application/json"},
-                    params={"contact_id": f"eq.{contact_id}"},
-                    json=payload
-                )
-            else:
-                payload["contact_id"] = contact_id
-                payload["historial"] = []
-                await client.post(
-                    f"{SUPABASE_URL}/rest/v1/conversaciones",
-                    headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": "application/json"},
-                    json=payload
-                )
 
         return JSONResponse({
             "tipo": "categoria",
@@ -476,14 +459,14 @@ async def orquestador(request: Request):
         })
 
     else:
-        # Pregunta aclaratoria
+        # Pregunta aclaratoria — guardar en historial
         historial.append({"role": "user", "content": mensaje})
         historial.append({"role": "assistant", "content": respuesta})
         await guardar_historial(contact_id, historial)
 
         return JSONResponse({
             "tipo": "pregunta",
-            "agente_activo": None,
+            "agente_activo": "none",
             "intencion_contacto": None,
             "mensaje": respuesta
         })
@@ -496,7 +479,15 @@ async def productos(request: Request):
     mensaje = body.get("mensaje_usuario", "")
 
     if not contact_id or not mensaje:
-        return JSONResponse({"respuesta": "No pude procesar tu mensaje. Intentá de nuevo.", "siguiente_agente": None, "reclamo_completo": False})
+        return JSONResponse({
+            "respuesta": "No pude procesar tu mensaje. Intentá de nuevo.",
+            "siguiente_agente": "productos",
+            "reclamo_completo": False,
+            "nombre_producto_defectuoso": "",
+            "n_lote_producto_defectuoso": "",
+            "mail_reclamo_cliente": "",
+            "descripcion_problema_reclamos": ""
+        })
 
     historial = await get_historial(contact_id)
     if len(historial) > 40:
@@ -506,7 +497,15 @@ async def productos(request: Request):
     respuesta_raw = await llamar_claude(SYSTEM_PROMPT_PRODUCTOS, historial, max_tokens=700)
 
     if not respuesta_raw:
-        return JSONResponse({"respuesta": "Hubo un error. Intentá de nuevo.", "siguiente_agente": None, "reclamo_completo": False})
+        return JSONResponse({
+            "respuesta": "Hubo un error. Intentá de nuevo.",
+            "siguiente_agente": "productos",
+            "reclamo_completo": False,
+            "nombre_producto_defectuoso": "",
+            "n_lote_producto_defectuoso": "",
+            "mail_reclamo_cliente": "",
+            "descripcion_problema_reclamos": ""
+        })
 
     texto, json_data = parsear_respuesta(respuesta_raw)
 
@@ -514,22 +513,21 @@ async def productos(request: Request):
     await guardar_historial(contact_id, historial)
     await guardar_log(contact_id, "productos", mensaje, texto)
 
-    # Si hay siguiente_agente, actualizar en Supabase
-    siguiente_agente = json_data.get("siguiente_agente") if json_data else None
-    if siguiente_agente and siguiente_agente in ["leads", "proveedores"]:
+    siguiente_agente = json_data.get("siguiente_agente", "productos") or "productos"
+
+    # Si cambia de agente, actualizar Supabase
+    if siguiente_agente in ["leads", "proveedores"]:
         await set_agente_activo(contact_id, siguiente_agente)
 
-    response = {
+    return JSONResponse({
         "respuesta": texto,
         "siguiente_agente": siguiente_agente,
-        "reclamo_completo": json_data.get("reclamo_completo", False) if json_data else False,
-        "nombre_producto_defectuoso": json_data.get("nombre_producto_defectuoso", "") if json_data else "",
-        "n_lote_producto_defectuoso": json_data.get("n_lote_producto_defectuoso", "") if json_data else "",
-        "mail_reclamo_cliente": json_data.get("mail_reclamo_cliente", "") if json_data else "",
-        "descripcion_problema_reclamos": json_data.get("descripcion_problema_reclamos", "") if json_data else ""
-    }
-
-    return JSONResponse(response)
+        "reclamo_completo": json_data.get("reclamo_completo", False),
+        "nombre_producto_defectuoso": json_data.get("nombre_producto_defectuoso", ""),
+        "n_lote_producto_defectuoso": json_data.get("n_lote_producto_defectuoso", ""),
+        "mail_reclamo_cliente": json_data.get("mail_reclamo_cliente", ""),
+        "descripcion_problema_reclamos": json_data.get("descripcion_problema_reclamos", "")
+    })
 
 
 @app.post("/leads")
@@ -539,7 +537,15 @@ async def leads(request: Request):
     mensaje = body.get("mensaje_usuario", "")
 
     if not contact_id or not mensaje:
-        return JSONResponse({"respuesta": "No pude procesar tu mensaje. Intentá de nuevo.", "siguiente_agente": None, "recoleccion_completa": False})
+        return JSONResponse({
+            "respuesta": "No pude procesar tu mensaje. Intentá de nuevo.",
+            "siguiente_agente": "leads",
+            "recoleccion_completa": False,
+            "nombre_contacto_vendedor": "", "nombre_comercio": "",
+            "mail_comercio_vendedor": "", "ciudad_comercio_vendedor": "",
+            "direccion_potencial_cliente": "", "tipo_empresa_vendedor": "",
+            "volumen_comercio_vendedor": "", "mensaje_adicional_potencial_cliente": ""
+        })
 
     historial = await get_historial(contact_id)
     if len(historial) > 40:
@@ -549,7 +555,15 @@ async def leads(request: Request):
     respuesta_raw = await llamar_claude(SYSTEM_PROMPT_LEADS, historial, max_tokens=700)
 
     if not respuesta_raw:
-        return JSONResponse({"respuesta": "Hubo un error. Intentá de nuevo.", "siguiente_agente": None, "recoleccion_completa": False})
+        return JSONResponse({
+            "respuesta": "Hubo un error. Intentá de nuevo.",
+            "siguiente_agente": "leads",
+            "recoleccion_completa": False,
+            "nombre_contacto_vendedor": "", "nombre_comercio": "",
+            "mail_comercio_vendedor": "", "ciudad_comercio_vendedor": "",
+            "direccion_potencial_cliente": "", "tipo_empresa_vendedor": "",
+            "volumen_comercio_vendedor": "", "mensaje_adicional_potencial_cliente": ""
+        })
 
     texto, json_data = parsear_respuesta(respuesta_raw)
 
@@ -557,31 +571,27 @@ async def leads(request: Request):
     await guardar_historial(contact_id, historial)
     await guardar_log(contact_id, "leads", mensaje, texto)
 
-    recoleccion_completa = json_data.get("recoleccion_completa", False) if json_data else False
-    siguiente_agente = json_data.get("siguiente_agente") if json_data else None
+    recoleccion_completa = json_data.get("recoleccion_completa", False)
+    siguiente_agente = json_data.get("siguiente_agente", "leads") or "leads"
 
-    # Limpiar agente_activo si terminó
     if recoleccion_completa:
         await set_agente_activo(contact_id, "none")
-    # Si cambia de agente
-    elif siguiente_agente and siguiente_agente in ["productos", "proveedores"]:
+    elif siguiente_agente in ["productos", "proveedores"]:
         await set_agente_activo(contact_id, siguiente_agente)
 
-    response = {
+    return JSONResponse({
         "respuesta": texto,
         "siguiente_agente": siguiente_agente,
         "recoleccion_completa": recoleccion_completa,
-        "nombre_contacto_vendedor": json_data.get("nombre_contacto_vendedor", "") if json_data else "",
-        "nombre_comercio": json_data.get("nombre_comercio", "") if json_data else "",
-        "mail_comercio_vendedor": json_data.get("mail_comercio_vendedor", "") if json_data else "",
-        "ciudad_comercio_vendedor": json_data.get("ciudad_comercio_vendedor", "") if json_data else "",
-        "direccion_potencial_cliente": json_data.get("direccion_potencial_cliente", "") if json_data else "",
-        "tipo_empresa_vendedor": json_data.get("tipo_empresa_vendedor", "") if json_data else "",
-        "volumen_comercio_vendedor": json_data.get("volumen_comercio_vendedor", "") if json_data else "",
-        "mensaje_adicional_potencial_cliente": json_data.get("mensaje_adicional_potencial_cliente", "") if json_data else ""
-    }
-
-    return JSONResponse(response)
+        "nombre_contacto_vendedor": json_data.get("nombre_contacto_vendedor", ""),
+        "nombre_comercio": json_data.get("nombre_comercio", ""),
+        "mail_comercio_vendedor": json_data.get("mail_comercio_vendedor", ""),
+        "ciudad_comercio_vendedor": json_data.get("ciudad_comercio_vendedor", ""),
+        "direccion_potencial_cliente": json_data.get("direccion_potencial_cliente", ""),
+        "tipo_empresa_vendedor": json_data.get("tipo_empresa_vendedor", ""),
+        "volumen_comercio_vendedor": json_data.get("volumen_comercio_vendedor", ""),
+        "mensaje_adicional_potencial_cliente": json_data.get("mensaje_adicional_potencial_cliente", "")
+    })
 
 
 @app.post("/proveedores")
@@ -591,7 +601,15 @@ async def proveedores(request: Request):
     mensaje = body.get("mensaje_usuario", "")
 
     if not contact_id or not mensaje:
-        return JSONResponse({"respuesta": "No pude procesar tu mensaje. Intentá de nuevo.", "siguiente_agente": None, "recoleccion_completa": False})
+        return JSONResponse({
+            "respuesta": "No pude procesar tu mensaje. Intentá de nuevo.",
+            "siguiente_agente": "proveedores",
+            "recoleccion_completa": False,
+            "tipo": "", "nombre_proveedor": "",
+            "producto_o_servicio_proveedor": "", "redes_proveedor": "",
+            "dato_contacto_proveedor": "", "mail_proveedor": "",
+            "cv_archivo_2": "", "comentario_cv": ""
+        })
 
     historial = await get_historial(contact_id)
     if len(historial) > 40:
@@ -601,7 +619,15 @@ async def proveedores(request: Request):
     respuesta_raw = await llamar_claude(SYSTEM_PROMPT_PROVEEDORES, historial, max_tokens=700)
 
     if not respuesta_raw:
-        return JSONResponse({"respuesta": "Hubo un error. Intentá de nuevo.", "siguiente_agente": None, "recoleccion_completa": False})
+        return JSONResponse({
+            "respuesta": "Hubo un error. Intentá de nuevo.",
+            "siguiente_agente": "proveedores",
+            "recoleccion_completa": False,
+            "tipo": "", "nombre_proveedor": "",
+            "producto_o_servicio_proveedor": "", "redes_proveedor": "",
+            "dato_contacto_proveedor": "", "mail_proveedor": "",
+            "cv_archivo_2": "", "comentario_cv": ""
+        })
 
     texto, json_data = parsear_respuesta(respuesta_raw)
 
@@ -609,28 +635,24 @@ async def proveedores(request: Request):
     await guardar_historial(contact_id, historial)
     await guardar_log(contact_id, "proveedores", mensaje, texto)
 
-    recoleccion_completa = json_data.get("recoleccion_completa", False) if json_data else False
-    siguiente_agente = json_data.get("siguiente_agente") if json_data else None
+    recoleccion_completa = json_data.get("recoleccion_completa", False)
+    siguiente_agente = json_data.get("siguiente_agente", "proveedores") or "proveedores"
 
-    # Limpiar agente_activo si terminó
     if recoleccion_completa:
         await set_agente_activo(contact_id, "none")
-    # Si cambia de agente
-    elif siguiente_agente and siguiente_agente in ["productos", "leads"]:
+    elif siguiente_agente in ["productos", "leads"]:
         await set_agente_activo(contact_id, siguiente_agente)
 
-    response = {
+    return JSONResponse({
         "respuesta": texto,
         "siguiente_agente": siguiente_agente,
         "recoleccion_completa": recoleccion_completa,
-        "tipo": json_data.get("tipo", "") if json_data else "",
-        "nombre_proveedor": json_data.get("nombre_proveedor", "") if json_data else "",
-        "producto_o_servicio_proveedor": json_data.get("producto_o_servicio_proveedor", "") if json_data else "",
-        "redes_proveedor": json_data.get("redes_proveedor", "") if json_data else "",
-        "dato_contacto_proveedor": json_data.get("dato_contacto_proveedor", "") if json_data else "",
-        "mail_proveedor": json_data.get("mail_proveedor", "") if json_data else "",
-        "cv_archivo_2": json_data.get("cv_archivo_2", "") if json_data else "",
-        "comentario_cv": json_data.get("comentario_cv", "") if json_data else ""
-    }
-
-    return JSONResponse(response)
+        "tipo": json_data.get("tipo", ""),
+        "nombre_proveedor": json_data.get("nombre_proveedor", ""),
+        "producto_o_servicio_proveedor": json_data.get("producto_o_servicio_proveedor", ""),
+        "redes_proveedor": json_data.get("redes_proveedor", ""),
+        "dato_contacto_proveedor": json_data.get("dato_contacto_proveedor", ""),
+        "mail_proveedor": json_data.get("mail_proveedor", ""),
+        "cv_archivo_2": json_data.get("cv_archivo_2", ""),
+        "comentario_cv": json_data.get("comentario_cv", "")
+    })
