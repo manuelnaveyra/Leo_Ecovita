@@ -426,7 +426,7 @@ async def orquestador(request: Request):
     if len(historial) > 10:
         historial = historial[-10:]
 
-    mensajes = historial + [{"role": "user", "content": mensaje}]
+    mensajes = [{"role": "user", "content": mensaje}]
     respuesta = await llamar_claude(SYSTEM_PROMPT_ORQUESTADOR, mensajes, max_tokens=100)
 
     if not respuesta:
