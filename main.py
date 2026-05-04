@@ -366,13 +366,16 @@ REGLAS:
 - Si el contacto se va por las ramas, redirigí con naturalidad.
 - Solo texto plano, sin markdown.
 
+POST-RECOLECCIÓN: cuando ya tenés los 8 campos y el usuario sigue escribiendo, respondé sus preguntas de seguimiento y mantené siguiente_agente: "leads". Si el usuario se despide usá este texto exacto: "Gracias por comunicarte con el asistente virtual de Ecovita. Quedo a disposición para lo que necesites. Hasta la próxima 👋" y poné siguiente_agente: "none".
+
 RESPUESTA JSON OBLIGATORIA después de cada mensaje (ManyChat lo lee, el usuario NO lo ve):
 ---JSON---
 {"nombre_contacto_vendedor": "", "nombre_comercio": "", "mail_comercio_vendedor": "", "ciudad_comercio_vendedor": "", "direccion_potencial_cliente": "", "tipo_empresa_vendedor": "", "volumen_comercio_vendedor": "", "mensaje_adicional_potencial_cliente": "", "recoleccion_completa": false, "siguiente_agente": "leads"}
 ---FIN---
 - Completá solo los campos que ya tenés. Vacíos como string vacío.
-- Cuando tengas los 8 campos completos: recoleccion_completa: true.
-- Si el contacto pregunta sobre productos o hace un reclamo → siguiente_agente: "productos".
+- Cuando tengas los 8 campos completos: recoleccion_completa: true. Mantené true en mensajes siguientes.
+- Si el contacto pregunta sobre productos o reclamos → siguiente_agente: "productos".
+- Si el contacto se despide → siguiente_agente: "none".
 - siguiente_agente NUNCA puede ser null. Por defecto siempre es "leads"."""
 
 
@@ -407,14 +410,17 @@ REGLAS GENERALES:
 - No des información sobre proveedores actuales ni estructura interna.
 - Siempre incluí el JSON del tipo de contacto que estás atendiendo.
 
+POST-RECOLECCIÓN: cuando ya terminaste y el usuario sigue escribiendo, respondé sus preguntas de seguimiento y mantené siguiente_agente: "proveedores". Si el usuario se despide usá este texto exacto: "Gracias por comunicarte con el asistente virtual de Ecovita. Quedo a disposición para lo que necesites. Hasta la próxima 👋" y poné siguiente_agente: "none".
+
 RESPUESTA JSON OBLIGATORIA después de cada mensaje (ManyChat lo lee, el usuario NO lo ve):
 ---JSON---
 {"tipo": "", "nombre_proveedor": "", "producto_o_servicio_proveedor": "", "redes_proveedor": "", "dato_contacto_proveedor": "", "mail_proveedor": "", "cv_archivo_2": "", "comentario_cv": "", "recoleccion_completa": false, "siguiente_agente": "proveedores"}
 ---FIN---
 - Para proveedores: tipo="proveedor". Para postulantes: tipo="postulante".
 - Completá solo los campos relevantes.
-- Cuando terminés: recoleccion_completa: true.
+- Cuando terminés: recoleccion_completa: true. Mantené true en mensajes siguientes.
 - Si el contacto pregunta sobre productos → siguiente_agente: "productos".
+- Si el contacto se despide → siguiente_agente: "none".
 - siguiente_agente NUNCA puede ser null. Por defecto siempre es "proveedores"."""
 
 
@@ -440,7 +446,7 @@ async def orquestador(request: Request):
     if len(historial) > 10:
         historial = historial[-10:]
 
-    mensajes = [{"role": "user", "content": mensaje}]
+    mensajes = historial + [{"role": "user", "content": mensaje}]
     respuesta = await llamar_claude(SYSTEM_PROMPT_ORQUESTADOR, mensajes, max_tokens=100)
 
     if not respuesta:
@@ -588,7 +594,7 @@ async def leads(request: Request):
     recoleccion_completa = json_data.get("recoleccion_completa", False)
     siguiente_agente = json_data.get("siguiente_agente", "leads") or "leads"
 
-    if recoleccion_completa:
+    if siguiente_agente == "none":
         await set_agente_activo(contact_id, "none")
     elif siguiente_agente in ["productos", "proveedores"]:
         await set_agente_activo(contact_id, siguiente_agente)
@@ -652,7 +658,7 @@ async def proveedores(request: Request):
     recoleccion_completa = json_data.get("recoleccion_completa", False)
     siguiente_agente = json_data.get("siguiente_agente", "proveedores") or "proveedores"
 
-    if recoleccion_completa:
+    if siguiente_agente == "none":
         await set_agente_activo(contact_id, "none")
     elif siguiente_agente in ["productos", "leads"]:
         await set_agente_activo(contact_id, siguiente_agente)
