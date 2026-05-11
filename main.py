@@ -218,6 +218,7 @@ RESPUESTA JSON OBLIGATORIA después de cada mensaje (ManyChat lo lee, el usuario
 - Si hay reclamo activo: completá los campos que ya tenés. Cuando tengas los 4, poné reclamo_completo: true.
 - Si detectás que el contacto debe ir a otro agente: cambiá siguiente_agente a "leads" o "proveedores".
 - Si no hay reclamo ni cambio de agente: dejá los campos vacíos y siguiente_agente: "productos".
+- Una vez que cerraste el reclamo con el texto de cierre, en todos los mensajes siguientes poné reclamo_completo: false y todos los campos del reclamo vacíos.
 - siguiente_agente NUNCA puede ser null. Siempre tiene un valor.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
