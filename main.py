@@ -18,6 +18,13 @@ app.add_middleware(
 SUPABASE_URL = os.environ["SUPABASE_URL"]
 SUPABASE_KEY = os.environ["SUPABASE_KEY"]
 ANTHROPIC_KEY = os.environ["ANTHROPIC_KEY"]
+MANYCHAT_API_KEY = os.environ["MANYCHAT_API_KEY"]
+
+ETIQUETAS = {
+    "leads": "Comprar_productos",
+    "productos": "Consulta_sobre_productos",
+    "proveedores": "Ser_proveedor/enviar_CV"
+}
 
 
 # ─────────────────────────────────────────────
@@ -93,6 +100,21 @@ async def set_agente_activo(contact_id: str, agente: str):
                 headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": "application/json"},
                 json=payload
             )
+
+
+async def agregar_etiqueta(contact_id: str, agente: str):
+    tag_name = ETIQUETAS.get(agente)
+    if not tag_name:
+        return
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            await client.post(
+                "https://api.manychat.com/fb/subscriber/addTagByName",
+                headers={"Authorization": f"Bearer {MANYCHAT_API_KEY}"},
+                json={"subscriber_id": contact_id, "tag_name": tag_name}
+            )
+    except Exception:
+        pass
 
 
 async def guardar_log(contact_id: str, agente: str, mensaje: str, respuesta: str):
@@ -182,7 +204,7 @@ REGLAS GENERALES:
 - Si alguien pregunta por precios → respondé con entusiasmo que los precios los maneja el equipo comercial, preguntale si tiene un negocio para conectarlo con la persona indicada, y devolvé siguiente_agente: "leads" en el JSON.
 - Si alguien menciona que tiene un negocio, local, comercio, que revende o quiere comprar en cantidad → devolvé siguiente_agente: "leads" en el JSON sin mencionarlo al usuario.
 - Si alguien quiere ofrecer productos o servicios a Ecovita, o busca empleo → devolvé siguiente_agente: "proveedores" en el JSON sin mencionarlo al usuario.
-- Si no tenés información sobre algo específico → decile que no tenés esa información disponible, que lo vas a consultar con el área correspondiente y le van a dar una respuesta en caso de corresponder. No des datos de contacto de ningún tipo.
+- Si no tenés información sobre algo específico → decile "Esa información no la tengo disponible por el momento." No prometas consultas ni seguimiento. No des datos de contacto de ningún tipo.
 - Solo texto plano, sin markdown, sin formato especial.
 - La conversación termina cuando el cliente se despide, cambia de tema o se va solo. No fuerces el cierre.
 
@@ -191,6 +213,9 @@ Supermercados: Carrefour, Coto, Changomás, La Anónima, Jumbo, VEA, Disco, Libe
 Mayoristas: Makro, Maxi Carrefour, Nini y principales mayoristas del interior del país.
 Online: PedidosYa, Mercado Libre, Rappi.
 Catálogo: ecovita.com.ar/catalogo
+Tienda online productos Smart (próximo lanzamiento): tienda Ecosmart en Tienda Nube — compra por bulto para empresas y mayoristas.
+
+Cuando alguien pregunta si tienen tienda online, mencioná que los productos están en PedidosYa, Mercado Libre y Rappi, y que próximamente los productos Smart van a estar disponibles para compra en bulto en la tienda Ecosmart de Tienda Nube.
 
 Cuando el contacto pregunta dónde conseguir los productos, copiá EXACTAMENTE este texto sin modificar ni una palabra:
 🛒 ¡Es muy fácil conseguir los productos Ecovita!
@@ -210,6 +235,7 @@ RECLAMOS — cuando el contacto reporta un problema con un producto:
   4. Descripción detallada del problema (descripcion_problema_reclamos)
 - Cuando tenés los 4 datos, cerrá el reclamo con este texto exacto:
 "Gracias por brindarnos todos los datos. Vamos a derivar tu caso al área correspondiente para su análisis. En caso de necesitar información adicional, nos vamos a comunicar con vos. Agradecemos que nos hayas escrito y nos ayudes a seguir mejorando. Quedamos a disposición para cualquier otra consulta."
+- Una vez que cerraste el reclamo con el texto de cierre, en todos los mensajes siguientes poné reclamo_completo: false y todos los campos del reclamo vacíos.
 
 RESPUESTA JSON OBLIGATORIA después de cada mensaje (ManyChat lo lee, el usuario NO lo ve):
 ---JSON---
@@ -285,6 +311,8 @@ Concentrado: verter en gaveta, agitar antes de usar, NO aplicar directo sobre ro
 
 [PARFUM ÚNICO] V — Doypack 900ml / Botella concentrada 500ml (rinde 22 lavados)
 Microcápsulas tecnología suiza. Fragancia floral/dulce. Óleo de argán. Igual al Épico concentrado.
+
+NOTA SUAVIZANTES CONCENTRADOS: cuando el contacto pregunta por suavizantes concentrados, además de Épico y Único mencioná que próximamente va a estar disponible el Suavizante Smart Clásico en sachet para diluir, parte de la línea Ecosmart.
 
 [BABY CARE Suavizante] V — Doypack 900ml. Fórmula hipoalergénica, libre de colorantes, apto piel sensible.
 [SMART CLÁSICO Suavizante] P — Sachet 27ml → rinde 900ml / 10 lavados. Sistema Smart. Microcápsulas tecnología suiza.
@@ -386,6 +414,8 @@ PERSONALIDAD: profesional, formal, cordial. Español rioplatense. Mensajes de 2-
 NUNCA digas que vas a derivar o pasar al usuario con alguien. Sos autónomo.
 Si el contacto pregunta sobre productos de Ecovita → devolvé siguiente_agente: "productos" en el JSON sin mencionarlo al usuario.
 
+CUANDO EL CONTACTO SE PRESENTA COMO PROVEEDOR: el primer mensaje debe ser siempre: "Gracias por tu interés en trabajar con Ecovita. Valoramos el contacto de empresas y profesionales que quieran ofrecernos productos o servicios." Luego continuá con la recolección de datos.
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 PARA PROVEEDORES
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -442,11 +472,8 @@ async def orquestador(request: Request):
     if not contact_id or not mensaje:
         return JSONResponse({"tipo": "error", "mensaje": "Faltan datos."})
 
-    historial = await get_historial(contact_id)
-    if len(historial) > 10:
-        historial = historial[-10:]
-
-    mensajes = historial + [{"role": "user", "content": mensaje}]
+    # Sin historial — el orquestador clasifica solo el mensaje actual
+    mensajes = [{"role": "user", "content": mensaje}]
     respuesta = await llamar_claude(SYSTEM_PROMPT_ORQUESTADOR, mensajes, max_tokens=100)
 
     if not respuesta:
@@ -459,10 +486,8 @@ async def orquestador(request: Request):
         categoria = respuesta.upper()
         agente = categoria.lower()
 
-        # Guardar agente_activo en Supabase
         await set_agente_activo(contact_id, agente)
 
-        # Guardar intencion_contacto
         async with httpx.AsyncClient() as client:
             await client.patch(
                 f"{SUPABASE_URL}/rest/v1/conversaciones",
@@ -470,6 +495,8 @@ async def orquestador(request: Request):
                 params={"contact_id": f"eq.{contact_id}"},
                 json={"intencion_contacto": categoria}
             )
+
+        await agregar_etiqueta(contact_id, agente)
 
         return JSONResponse({
             "tipo": "categoria",
@@ -479,7 +506,8 @@ async def orquestador(request: Request):
         })
 
     else:
-        # Pregunta aclaratoria — guardar en historial
+        # Pregunta aclaratoria
+        historial = await get_historial(contact_id)
         historial.append({"role": "user", "content": mensaje})
         historial.append({"role": "assistant", "content": respuesta})
         await guardar_historial(contact_id, historial)
@@ -535,9 +563,16 @@ async def productos(request: Request):
 
     siguiente_agente = json_data.get("siguiente_agente", "productos") or "productos"
 
-    # Si cambia de agente, actualizar Supabase
     if siguiente_agente in ["leads", "proveedores"]:
         await set_agente_activo(contact_id, siguiente_agente)
+        await agregar_etiqueta(contact_id, siguiente_agente)
+        async with httpx.AsyncClient() as client:
+            await client.patch(
+                f"{SUPABASE_URL}/rest/v1/conversaciones",
+                headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": "application/json"},
+                params={"contact_id": f"eq.{contact_id}"},
+                json={"intencion_contacto": siguiente_agente.upper()}
+            )
 
     return JSONResponse({
         "respuesta": texto,
@@ -598,6 +633,14 @@ async def leads(request: Request):
         await set_agente_activo(contact_id, "none")
     elif siguiente_agente in ["productos", "proveedores"]:
         await set_agente_activo(contact_id, siguiente_agente)
+        await agregar_etiqueta(contact_id, siguiente_agente)
+        async with httpx.AsyncClient() as client:
+            await client.patch(
+                f"{SUPABASE_URL}/rest/v1/conversaciones",
+                headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": "application/json"},
+                params={"contact_id": f"eq.{contact_id}"},
+                json={"intencion_contacto": siguiente_agente.upper()}
+            )
 
     return JSONResponse({
         "respuesta": texto,
@@ -662,6 +705,14 @@ async def proveedores(request: Request):
         await set_agente_activo(contact_id, "none")
     elif siguiente_agente in ["productos", "leads"]:
         await set_agente_activo(contact_id, siguiente_agente)
+        await agregar_etiqueta(contact_id, siguiente_agente)
+        async with httpx.AsyncClient() as client:
+            await client.patch(
+                f"{SUPABASE_URL}/rest/v1/conversaciones",
+                headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": "application/json"},
+                params={"contact_id": f"eq.{contact_id}"},
+                json={"intencion_contacto": siguiente_agente.upper()}
+            )
 
     return JSONResponse({
         "respuesta": texto,
