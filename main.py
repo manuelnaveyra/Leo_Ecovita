@@ -430,8 +430,83 @@ Modo de uso: aplicar sobre superficie, pasar paño suave. No requiere enjuague.
  
 ─── 8. REPELENTES GALAXIA ───
  
-[ESPIRALES GALAXIA] V — x12 unidades. Uso interior. EAN: 7798124364209
-[TABLETAS GALAXIA] P — x12 unidades."""
+[ESPIRALES GALAXIA] V — x12 unidades. Uso interior y ambientes ventilados como patios y galerías. Encendido: prender la punta del espiral con un fósforo o encendedor, dejar que se consuma unos segundos y apagar la llama. El espiral queda encendido liberando humo repelente. Dejar en un soporte estable. No dejar sin supervisión. Mantener alejado de niños y mascotas. EAN: 7798124364209
+[TABLETAS GALAXIA] P — x12 unidades.
+ 
+─── HISTORIA E IDENTIDAD ECOVITA ───
+ 
+Ecovita nació en 2001 en plena crisis argentina. Los hermanos Julián y Guido Mellicovsky arrancaron desde la casa familiar con una inversión inicial de 3.000 dólares. Hoy son una empresa con más de 70 productos propios, planta industrial en Loma Hermosa (San Martín, Buenos Aires), más de 70 empleados y presencia en todas las principales cadenas de supermercados del país. Compiten directamente con multinacionales en un mercado donde 5 grandes empresas controlan más del 80% del volumen. Fabricación 100% argentina, fórmulas propias y control de calidad interno. Durante la crisis de 2018 eligieron no achicar sus envases cuando el 80% de sus competidores lo hacía — llegaron a imprimir "No achicamos nuestros envases" en sus productos. Julián llegó a poner su WhatsApp personal en los envases para recibir feedback directo. Recibieron distinción de la Provincia de Buenos Aires por sustentabilidad. Frase que los define: "La mejor publicidad son los productos."
+ 
+─── SINÓNIMOS SEMÁNTICOS ADICIONALES ───
+ 
+detergente líquido ropa → Jabón Líquido
+jabón para lavarropas → Jabón Líquido
+suavizador de telas → Suavizante
+multisuperficie → Limpiador de Vidrios o Ultra Brillo
+anti mosquito → Espirales Galaxia
+repelente → Espirales Galaxia
+ 
+─── NARRATIVA DE PRODUCTOS ───
+ 
+INTENSE (jabón): ideal para ropa de uso diario y ropa deportiva. Elimina olores persistentes gracias a la tecnología alemana. Compatible con agua fría. Apto para ropa negra y de color. Deja sensación de ropa recién lavada.
+ 
+EVOLUTION (jabón): ideal para quienes prefieren el formato botella por practicidad y comodidad. La botella viene lista para usar. El doypack es la alternativa más económica con el mismo contenido y rendimiento. Mismo producto, diferente formato.
+ 
+POWER CARE: menor costo por lavado. Concentrado de alto rendimiento. Menos volumen para transportar. Una botella de 500ml rinde lo mismo que 3L de jabón común. No es más fuerte — la potencia de limpieza es equivalente, la diferencia es que está concentrado para diluir.
+ 
+BABY CARE (jabón): especialmente formulado para ropa de bebé desde recién nacidos, primeras mudas, mantitas y prendas delicadas. Fragancia suave. Sin colorantes ni enzimas. Apto desde el nacimiento. También lo usan adultos con piel delicada.
+ 
+SPORT: producción temporalmente pausada. Estamos evaluando retomarlo. Mientras tanto recomendamos Intense para ropa deportiva — la tecnología alemana de neutralización de olores lo hace ideal. Power Care también es excelente alternativa.
+ 
+INTENSE CLÁSICO y FLORES SILVESTRES (suavizante): perfume duradero. Ropa perfumada por más tiempo. Sensación de frescura. Fragancia intensa que acompaña todo el día.
+ 
+BOUQUET (suavizante): perfil floral sofisticado. Sensación premium. Experiencia aromática duradera. Facilita el planchado.
+ 
+PARFUM ÉPICO: fragancia sofisticada inspirada en perfumería fina, con notas cálidas y perfil elegante de larga permanencia sobre las telas. Microcápsulas suizas activadas por fricción o movimiento. Óleo de argán.
+ 
+PARFUM ÚNICO: fragancia sofisticada inspirada en perfumería fina, con perfil envolvente y moderno de larga duración sobre las telas. Microcápsulas suizas activadas por fricción o movimiento. Óleo de argán.
+ 
+PARFUM ÉPICO vs ÚNICO: son equivalentes en tecnología, intensidad y duración. La diferencia es solo la tonalidad de la fragancia — Épico tiene notas cálidas y elegantes, Único tiene perfil envolvente y moderno.
+ 
+APRESTO: ideal para prendas que requieren mayor rigidez y prolijidad al planchado — camisas, manteles, ropa formal. Ayuda a mejorar la terminación, facilitar el planchado y perfumar las prendas. Usarlo después del lavado, antes de planchar. NO es suavizante ni lo reemplaza.
+ 
+LIMPIADOR DE COCINA: elimina grasa de hornallas, mesadas, campanas y todas las superficies lavables de la cocina.
+ 
+LIMPIADOR DE VIDRIOS: limpia espejos, mamparas, mesas de vidrio y ventanas sin dejar vetas. Secado rápido.
+ 
+ULTRA BRILLO: ideal para electrodomésticos, acero inoxidable, muebles, interior de auto, cuero, madera, metal, bronce, aluminio, cobre, mármol, porcelanato y más. Deja brillo sin residuos.
+ 
+LAVAVAJILLAS NEUTRO: suave para manos. Apto para uso frecuente. Glicerina protege la piel. Espuma controlada.
+ 
+DETERGENTE ULTRA CONCENTRADO: menos producto por lavado. Alto poder desengrasante. Unas pocas gotas alcanzan.
+ 
+SMART PISOS: además de limpiar, perfuma el ambiente del hogar. La fragancia queda en el ambiente después de pasar el piso.
+ 
+ARABIAN HOME SCENTS: inspirado en fragancias orientales y perfumería ambiental sofisticada. Pensado para quienes buscan una experiencia aromática diferencial en el hogar.
+ 
+─── RESPUESTAS REPUTACIONALES ───
+ 
+"No consigo el producto en mi zona": los productos están en Carrefour, Coto, Changomás, La Anónima, Jumbo, VEA, Disco, Libertad y DIA, y online en PedidosYa, Mercado Libre y Rappi. Si no lo encontrás en tu sucursal habitual podés pedirlo en otra o comprarlo online.
+ 
+"Subió mucho el precio": los precios los define cada punto de venta. Ecovita históricamente elige no trasladar la totalidad de los aumentos de costos para mantener precios accesibles.
+ 
+"Cambiaron la fórmula / antes hacía más espuma / antes tenía más perfume": las fórmulas pueden tener ajustes menores de lote a lote pero el producto es esencialmente el mismo. Si notás algo muy diferente podemos registrar tu comentario con el número de lote.
+ 
+"El producto vino muy líquido / el color cambió / el aroma cambió": puede ser variación de lote. Si tenés el número de lote podemos registrar el reclamo.
+ 
+"El sachet vino pinchado / el gatillo no funciona / la botella perdió líquido": es un reclamo de producto defectuoso. Necesito el nombre del producto, número de lote, mail y descripción del problema.
+ 
+─── OBJECIONES COMPETITIVAS ───
+ 
+"¿Es mejor que Skip/Ariel?": Ecovita fabrica con fórmulas propias y control de calidad interno. Muchos consumidores que los prueban los eligen por sobre las primeras marcas. La filosofía: la mejor publicidad son los productos.
+ 
+"¿Por qué el precio?": los precios los define cada punto de venta. Ecovita históricamente no traslada todos sus aumentos de costos — incluso en crisis no achicaron envases cuando el 80% de la competencia lo hacía.
+ 
+─── CONSULTAS COMERCIALES ───
+ 
+Cobertura: nacional en todas las principales cadenas de supermercados y mayoristas.
+Condiciones mínimas y listas de precios: las informa el equipo comercial directamente cuando se contactan telefónicamente. El bot recolecta los datos del interesado para que el equipo comercial se comunique.
+Duración del perfume (todos los productos): depende de la cantidad de producto usada, el tipo de tela y las condiciones de lavado. A mayor dosis, mayor intensidad y duración."""
  
  
 SYSTEM_PROMPT_LEADS = """Sos Leo, el asistente comercial de Laboratorios Ecovita S.A. Tu misión es recolectar los datos de potenciales distribuidores, mayoristas y comercios que quieren vender productos Ecovita.
