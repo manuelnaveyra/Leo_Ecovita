@@ -159,40 +159,59 @@ async def llamar_claude(system_prompt: str, mensajes: list, max_tokens: int = 70
         return data["content"][0]["text"]
  
  
+def _extraer_json(raw: str):
+    """Extrae el primer objeto JSON de un texto, venga como venga:
+    con ```json ... ```, con ---JSON--- ... ---FIN---, o pelado."""
+    if not raw:
+        return {}
+    # Quitar delimitadores conocidos para quedarnos con el cuerpo candidato
+    cuerpo = raw
+    if "---JSON---" in cuerpo:
+        cuerpo = cuerpo.split("---JSON---", 1)[1]
+    if "---FIN---" in cuerpo:
+        cuerpo = cuerpo.split("---FIN---", 1)[0]
+    # Quitar fences de markdown ```json ... ``` o ``` ... ```
+    cuerpo = cuerpo.replace("```json", "").replace("```JSON", "").replace("```", "")
+    cuerpo = cuerpo.strip()
+    # Intentar parsear directo
+    try:
+        return json.loads(cuerpo)
+    except Exception:
+        pass
+    # Recuperar el primer objeto {...} balanceado
+    try:
+        ini = cuerpo.index("{")
+        fin = cuerpo.rindex("}") + 1
+        return json.loads(cuerpo[ini:fin])
+    except Exception:
+        return {}
+
+
 def parsear_respuesta(raw: str):
+    """Devuelve (texto_plano, json_data). Para agentes que mezclan texto + JSON."""
     texto = raw
-    json_data = {}
     if "---JSON---" in raw:
-        partes = raw.split("---JSON---")
-        texto = partes[0].strip()
-        resto = partes[1].split("---FIN---")[0].strip()
-        # Intentar parsear aunque falte ---FIN--- (JSON truncado)
-        try:
-            json_data = json.loads(resto)
-        except Exception:
-            # Recuperar el primer objeto {...} completo si quedó texto extra
-            try:
-                ini = resto.index("{")
-                fin = resto.rindex("}") + 1
-                json_data = json.loads(resto[ini:fin])
-            except Exception:
-                pass
+        texto = raw.split("---JSON---", 1)[0].strip()
+    elif "```" in raw:
+        texto = raw.split("```", 1)[0].strip()
+    json_data = _extraer_json(raw)
     return texto, json_data
 
 
-# Palabras de ruta interna que el contacto NUNCA debe leer
-_PALABRAS_RUTA = ["LEADS", "PRODUCTOS", "PROVEEDORES", "NINGUNA"]
+# Palabras de ruta interna que el contacto NUNCA debe leer.
+# NO incluye "PRODUCTOS" porque es una palabra de uso cotidiano ("nuestros productos").
+# La separación ruta/mensaje en el JSON es el mecanismo principal; esto es solo red de seguridad.
+_PALABRAS_RUTA = ["LEADS", "PROVEEDORES", "NINGUNA"]
 
 def sanitizar_mensaje(texto: str) -> str:
-    """Elimina cualquier palabra de ruta interna que se haya filtrado en el mensaje al contacto."""
+    """Red de seguridad: elimina palabras de ruta interna filtradas en el mensaje al contacto.
+    Solo actúa sobre LEADS/PROVEEDORES/NINGUNA (no sobre 'productos', que es palabra común)."""
     if not texto:
         return texto
     limpio = texto
     for palabra in _PALABRAS_RUTA:
-        # Remover la palabra suelta (con o sin dos puntos), en cualquier capitalización
         for variante in [f"{palabra}:", f"{palabra}.", palabra, palabra.capitalize(), palabra.lower()]:
             limpio = limpio.replace(variante, "")
-    # Limpiar espacios dobles y bordes
     limpio = " ".join(limpio.split()).strip(" -—:·\n")
     return limpio
 
@@ -713,61 +732,20 @@ async def orquestador(request: Request):
         )
     await agregar_etiqueta(contact_id, agente)
 
-    # PRODUCTOS: responde directamente el agente productos (sin fricción de transición).
-    # El orquestador hace un llamado interno y devuelve la respuesta real del agente.
-    if categoria == "PRODUCTOS":
-        historial.append({"role": "user", "content": mensaje})
-        respuesta_prod = await llamar_claude(SYSTEM_PROMPT_PRODUCTOS, historial, max_tokens=1200)
-
-        if not respuesta_prod:
-            mensaje_contacto = "¡Claro! Contame, ¿qué necesitás saber sobre nuestros productos? 😊"
-            historial.append({"role": "assistant", "content": mensaje_contacto})
-            await guardar_historial(contact_id, historial)
-            return JSONResponse({
-                "tipo": "categoria",
-                "agente_activo": "productos",
-                "intencion_contacto": "PRODUCTOS",
-                "mensaje": mensaje_contacto,
-                "reclamo_completo": False,
-                "nombre_producto_defectuoso": "",
-                "n_lote_producto_defectuoso": "",
-                "mail_reclamo_cliente": "",
-                "descripcion_problema_reclamos": ""
-            })
-
-        texto_prod, json_prod = parsear_respuesta(respuesta_prod)
-        historial.append({"role": "assistant", "content": texto_prod})
-        await guardar_historial(contact_id, historial)
-        await guardar_log(contact_id, "productos", mensaje, texto_prod)
-
-        # El agente productos puede detectar que en realidad va a otro agente
-        siguiente = (json_prod.get("siguiente_agente") or "productos").lower()
-        if siguiente in ["leads", "proveedores"]:
-            await set_agente_activo(contact_id, siguiente)
-            await agregar_etiqueta(contact_id, siguiente)
-
-        return JSONResponse({
-            "tipo": "categoria",
-            "agente_activo": siguiente if siguiente in ["leads", "proveedores"] else "productos",
-            "intencion_contacto": "PRODUCTOS",
-            "mensaje": texto_prod,
-            "reclamo_completo": json_prod.get("reclamo_completo", False),
-            "nombre_producto_defectuoso": json_prod.get("nombre_producto_defectuoso", ""),
-            "n_lote_producto_defectuoso": json_prod.get("n_lote_producto_defectuoso", ""),
-            "mail_reclamo_cliente": json_prod.get("mail_reclamo_cliente", ""),
-            "descripcion_problema_reclamos": json_prod.get("descripcion_problema_reclamos", "")
-        })
-
-    # LEADS y PROVEEDORES: transición cálida del orquestador, el agente arranca la recolección.
+    # Guardar el turno en el historial (solo el mensaje del usuario; la respuesta
+    # la genera y guarda el endpoint del agente correspondiente).
     historial.append({"role": "user", "content": mensaje})
-    historial.append({"role": "assistant", "content": mensaje_contacto})
     await guardar_historial(contact_id, historial)
 
+    # El orquestador SOLO clasifica y setea agente_activo. NO manda contenido.
+    # ManyChat, en el mismo flujo, detecta agente_activo y llama al endpoint del agente,
+    # que es quien genera la primera respuesta. Así se evita el doble mensaje
+    # (transición del orquestador + respuesta del agente) para los tres agentes.
     return JSONResponse({
         "tipo": "categoria",
         "agente_activo": agente,
         "intencion_contacto": categoria,
-        "mensaje": mensaje_contacto
+        "mensaje": None
     })
  
  
