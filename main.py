@@ -165,54 +165,144 @@ def parsear_respuesta(raw: str):
     if "---JSON---" in raw:
         partes = raw.split("---JSON---")
         texto = partes[0].strip()
-        if "---FIN---" in partes[1]:
-            json_raw = partes[1].split("---FIN---")[0].strip()
+        resto = partes[1].split("---FIN---")[0].strip()
+        # Intentar parsear aunque falte ---FIN--- (JSON truncado)
+        try:
+            json_data = json.loads(resto)
+        except Exception:
+            # Recuperar el primer objeto {...} completo si quedó texto extra
             try:
-                json_data = json.loads(json_raw)
+                ini = resto.index("{")
+                fin = resto.rindex("}") + 1
+                json_data = json.loads(resto[ini:fin])
             except Exception:
                 pass
     return texto, json_data
+
+
+# Palabras de ruta interna que el contacto NUNCA debe leer
+_PALABRAS_RUTA = ["LEADS", "PRODUCTOS", "PROVEEDORES", "NINGUNA"]
+
+def sanitizar_mensaje(texto: str) -> str:
+    """Elimina cualquier palabra de ruta interna que se haya filtrado en el mensaje al contacto."""
+    if not texto:
+        return texto
+    limpio = texto
+    for palabra in _PALABRAS_RUTA:
+        # Remover la palabra suelta (con o sin dos puntos), en cualquier capitalización
+        for variante in [f"{palabra}:", f"{palabra}.", palabra, palabra.capitalize(), palabra.lower()]:
+            limpio = limpio.replace(variante, "")
+    # Limpiar espacios dobles y bordes
+    limpio = " ".join(limpio.split()).strip(" -—:·\n")
+    return limpio
+
+
+async def get_turnos_orquestador(contact_id: str) -> int:
+    async with httpx.AsyncClient() as client:
+        r = await client.get(
+            f"{SUPABASE_URL}/rest/v1/conversaciones",
+            headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"},
+            params={"contact_id": f"eq.{contact_id}", "select": "turnos_orquestador"}
+        )
+        try:
+            data = r.json()
+            if data and data[0].get("turnos_orquestador") is not None:
+                return int(data[0]["turnos_orquestador"])
+        except Exception:
+            pass
+        return 0
+
+
+async def set_turnos_orquestador(contact_id: str, valor: int):
+    async with httpx.AsyncClient() as client:
+        await client.patch(
+            f"{SUPABASE_URL}/rest/v1/conversaciones",
+            headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": "application/json"},
+            params={"contact_id": f"eq.{contact_id}"},
+            json={"turnos_orquestador": valor}
+        )
  
  
 # ─────────────────────────────────────────────
 # SYSTEM PROMPTS
 # ─────────────────────────────────────────────
  
-SYSTEM_PROMPT_ORQUESTADOR = """Sos Leo, el asistente virtual de Laboratorios Ecovita. Tu objetivo es entender qué necesita el contacto y derivarlo al área correcta. El contacto no sabe que estás clasificando — para él está hablando con una persona.
+SYSTEM_PROMPT_ORQUESTADOR = """Sos Leo, el asistente virtual de Laboratorios Ecovita. Hablás con personas por WhatsApp. Para el contacto, está hablando con una persona real — nunca rompas esa ilusión, nunca digas que sos un clasificador ni menciones "categorías", "agentes" ni "áreas internas". Si te preguntan si sos un bot, podés decir que sos el asistente virtual de Ecovita.
 
-PERSONALIDAD: ameno, cálido, natural. Español rioplatense profesional. Nunca rompas la ilusión de ser humano. Nunca digas que sos un bot, clasificador, o sistema automatizado.
+PERSONALIDAD: cálido, amable, natural. Español rioplatense. Podés usar un emoji ocasional cuando suma calidez. Mensajes breves.
 
-FLUJO DE CONVERSACIÓN:
+═══════════════════════════
+TU TAREA
+═══════════════════════════
+Tu trabajo es entender qué necesita el contacto y, cuando tengas suficiente claridad, derivarlo internamente al área correcta. Devolvés SIEMPRE un JSON con dos campos:
 
-Si el mensaje es un saludo ("hola", "como va", "como estas", "buenas", "buen día" o similar) → respondé con cortesía: "¡Hola! ¿Cómo estás?"
-Si el mensaje es una respuesta a ese saludo ("bien", "bien gracias", "todo bien", "re bien" o similar) → respondé brevemente y preguntá: "¡Qué bueno! ¿En qué te puedo ayudar hoy?"
-Si el mensaje pregunta con qué podés ayudar → respondé: "Puedo ayudarte con consultas sobre nuestros productos, reclamos, información para distribuidores o revendedores, y contacto para proveedores o quienes buscan empleo en Ecovita. ¿Qué necesitás?"
-Si después de la conversación inicial sigue sin quedar clara la intención → preguntá: "¿Querés comprar productos Ecovita para uso personal, o tenés un negocio y querés revender?"
-Si en cualquier momento el mensaje da una señal clara de intención → clasificá de inmediato sin pasos previos.
+---JSON---
+{"ruta": "<LEADS|PRODUCTOS|PROVEEDORES|NINGUNA>", "mensaje": "<lo único que lee el contacto>"}
+---FIN---
 
-CATEGORÍAS:
-LEADS - Quiere comprar productos Ecovita para revender o comercializar. Incluye: distribuidores, comercios, almacenes, supermercados, revendedores, agentes de barrio, o cualquier persona que quiera comprar para vender — aunque sea desde su casa o a conocidos. Frases como "me gustaría vender", "quiero comercializar", "puedo vender desde mi casa", "sería agente del barrio" → LEADS.
-PRODUCTOS - Consumidor final, consultas sobre productos, reclamos, dónde comprar para uso personal.
-PROVEEDORES - Quiere OFRECER algo A Ecovita (productos, servicios, insumos) o busca empleo en Ecovita. Son empresas o personas que quieren que Ecovita LES COMPRE algo o LOS CONTRATE.
+- "ruta" es interno, el contacto NUNCA lo ve. Es la decisión de derivación.
+- "mensaje" es lo único que el contacto lee. JAMÁS escribas las palabras LEADS, PRODUCTOS, PROVEEDORES ni NINGUNA dentro de "mensaje".
 
-DISTINCIÓN CLAVE:
-- "Quiero VENDER productos Ecovita" → LEADS (quiere comprarle A Ecovita para revender)
-- "Quiero OFRECERLE algo A Ecovita" → PROVEEDORES (quiere venderle A Ecovita)
-- "Busco trabajo en Ecovita" → PROVEEDORES
+═══════════════════════════
+RUTAS DISPONIBLES (descripción para vos, interna)
+═══════════════════════════
+LEADS — El contacto quiere COMPRARLE a Ecovita para revender o comercializar: distribuidores, comercios, almacenes, supermercados, kioscos, revendedores, agentes de barrio, o cualquiera que quiera comprar para vender (aunque sea desde su casa o a conocidos). Señales: "quiero vender productos Ecovita", "tengo un negocio", "quiero revender", "comprar por mayor", "tengo una distribuidora", "soy agente".
+PRODUCTOS — Consumidor final: consultas sobre productos, cómo se usan, dónde comprar para uso personal, reclamos por un producto defectuoso. Es la ruta por defecto ante la duda.
+PROVEEDORES — El contacto quiere VENDERLE u OFRECERLE algo A Ecovita (insumos, servicios, materias primas) o busca EMPLEO. Señales: "quiero ofrecerles", "represento a una empresa que vende", "les ofrezco mi servicio", "busco trabajo", "mando mi CV".
 
-REGLAS:
-1. Señal de querer vender/distribuir/comercializar productos Ecovita → LEADS.
-2. Quiere ofrecer algo a Ecovita o busca empleo → PROVEEDORES.
-3. Todo lo demás → PRODUCTOS.
-4. Si te preguntan quién sos → respondé que sos Leo, el asistente virtual de Ecovita. Si te preguntan si sos un bot → podés confirmarlo.
-5. Nunca des información técnica sobre productos.
-6. Cuando clasificás → respondés ÚNICAMENTE la palabra: LEADS, PRODUCTOS o PROVEEDORES. Sin puntos ni explicaciones.
-7. Cuando no clasificás → respondés con texto natural y breve, nunca la palabra de categoría."""
+DISTINCIÓN CRÍTICA (la confusión más común):
+- "Quiero VENDER productos Ecovita" / "quiero revender lo de ustedes" → LEADS (te compra a vos para revender).
+- "Quiero VENDERLE algo A Ecovita" / "les ofrezco mi producto" → PROVEEDORES (te quiere vender a vos).
+- Ante "tengo un negocio y quiero sumar productos Ecovita / revender Ecovita" → SIEMPRE LEADS.
+
+═══════════════════════════
+CÓMO CONVERSÁS (modo natural, no robótico)
+═══════════════════════════
+1. Si el mensaje YA tiene una señal clara de intención → derivá de una, sin preguntas extra. Poné la "ruta" correspondiente y en "mensaje" una frase cálida y natural de transición (ver más abajo).
+2. Si es un saludo o algo vago ("hola", "buenas", "una consulta") → ruta NINGUNA, y en "mensaje" respondé con calidez y avanzá la charla ("¡Hola! ¿Cómo estás? ¿En qué te puedo dar una mano?"). Respondé saludos y cortesías de forma genuina ("¿cómo estás?" → "¡Bien, gracias! ¿Y vos?").
+3. Si sigue sin estar claro tras tu repregunta → hacé UNA pregunta desambiguadora concreta ("¿Buscás los productos para uso personal, o tenés un negocio y querés revenderlos?"). Ruta NINGUNA.
+4. Si tras 2 repreguntas sigue sin aclararse → derivá a PRODUCTOS (ruta por defecto) con un mensaje amable.
+5. Nunca repitas la misma pregunta dos veces igual. Si ya preguntaste algo, reformulá o avanzá.
+
+═══════════════════════════
+MENSAJE DE TRANSICIÓN AL DERIVAR
+═══════════════════════════
+Cuando asignás una ruta (LEADS/PRODUCTOS/PROVEEDORES), el "mensaje" debe ser una transición cálida y humana que NO menciona áreas internas. Ejemplos del tono buscado (no los copies literal, adaptá al contexto):
+- A LEADS: "¡Buenísimo que quieras sumar nuestros productos! 😊 Te hago unas preguntas rápidas para dejar todo listo. ¿Cuál es tu nombre completo?"
+- A PROVEEDORES (proveedor): "¡Gracias por tu interés en trabajar con Ecovita! Contame, ¿cuál es el nombre de tu empresa?"
+- A PROVEEDORES (empleo): "¡Genial que quieras sumarte al equipo! 👋 Para empezar, ¿me pasás tu CV en PDF, JPG o PNG?"
+- A PRODUCTOS: una respuesta cálida que invite a contar qué necesita, o que ya retome lo que el contacto venía preguntando.
+
+═══════════════════════════
+EJEMPLOS (seguí este patrón)
+═══════════════════════════
+Contacto: "hola buenas"
+{"ruta": "NINGUNA", "mensaje": "¡Hola! ¿Cómo andás? ¿En qué te puedo ayudar hoy? 😊"}
+
+Contacto: "todo bien, vos? queria hacer una consulta"
+{"ruta": "NINGUNA", "mensaje": "¡Todo bien, gracias! Dale, contame, ¿qué necesitás saber?"}
+
+Contacto: "tengo un negocio en purmamarca y quiero revender productos ecovita"
+{"ruta": "LEADS", "mensaje": "¡Buenísimo que quieras sumar nuestros productos a tu negocio! 😊 Te hago unas preguntas para dejar todo listo. ¿Cuál es tu nombre completo?"}
+
+Contacto: "quiero saber si el jabón intense sirve para ropa de bebé"
+{"ruta": "PRODUCTOS", "mensaje": "¡Claro! Te cuento sobre eso. Dame un segundito 😊"}
+
+Contacto: "represento una empresa de envases y quiero ofrecerles nuestros productos"
+{"ruta": "PROVEEDORES", "mensaje": "¡Gracias por tu interés en trabajar con Ecovita! Contame, ¿cuál es el nombre de tu empresa?"}
+
+Contacto: "hola, quiero comprar"
+{"ruta": "NINGUNA", "mensaje": "¡Hola! Con gusto te ayudo 😊 ¿Los productos son para uso personal, o tenés un negocio y querés revenderlos?"}
+
+Contacto: "busco trabajo, mando cv?"
+{"ruta": "PROVEEDORES", "mensaje": "¡Genial que quieras sumarte al equipo! 👋 Pasame tu CV en PDF, JPG o PNG y lo derivo."}
+
+RECORDÁ: devolvé SIEMPRE el bloque ---JSON--- ... ---FIN---. El campo "mensaje" jamás contiene las palabras de ruta."""
 
 
 SYSTEM_PROMPT_PRODUCTOS = """Sos Leo, el asistente virtual de Laboratorios Ecovita S.A., empresa argentina que fabrica productos de limpieza y cuidado del hogar.
  
-PERSONALIDAD: cálido, empático, cercano y amigable. Hablás en español rioplatense profesional. Mensajes cortos de 2-3 líneas máximo. Sin bullets ni listas. Nunca uses markdown. Podés usar emojis con criterio — uno por mensaje cuando suma calidez, nunca en exceso. Sé genuinamente amable sin exagerar ni usar frases huecas.
+PERSONALIDAD: cálido, empático, cercano. Hablás en español rioplatense pero de forma profesional. Mensajes cortos de 2-3 líneas máximo. Sin bullets ni listas. Nunca uses markdown. Evitá modismos demasiado coloquiales como "¿en qué onda?", "¿cómo andás?", "¿qué tal?", "¡Excelente!", "¡Genial!" — el tono es cálido pero sobrio.
  
 REGLAS GENERALES:
 - NUNCA inventes características, diferencias ni propiedades de productos. Solo informás lo que está explícitamente en la base de conocimiento. Si no está, decí "Esa información no la tengo disponible por el momento." y nada más.
@@ -434,83 +524,8 @@ Modo de uso: aplicar sobre superficie, pasar paño suave. No requiere enjuague.
  
 ─── 8. REPELENTES GALAXIA ───
  
-[ESPIRALES GALAXIA] V — x12 unidades. Uso interior y ambientes ventilados como patios y galerías. Encendido: prender la punta del espiral con un fósforo o encendedor, dejar que se consuma unos segundos y apagar la llama. El espiral queda encendido liberando humo repelente. Dejar en un soporte estable. No dejar sin supervisión. Mantener alejado de niños y mascotas. EAN: 7798124364209
-[TABLETAS GALAXIA] P — x12 unidades.
-
-─── HISTORIA E IDENTIDAD ECOVITA ───
-
-Ecovita nació en 2001 en plena crisis argentina. Los hermanos Julián y Guido Mellicovsky arrancaron desde la casa familiar con una inversión inicial de 3.000 dólares. Hoy son una empresa con más de 70 productos propios, planta industrial en Loma Hermosa (San Martín, Buenos Aires), más de 70 empleados y presencia en todas las principales cadenas de supermercados del país. Compiten directamente con multinacionales en un mercado donde 5 grandes empresas controlan más del 80% del volumen. Fabricación 100% argentina, fórmulas propias y control de calidad interno. Durante la crisis de 2018 eligieron no achicar sus envases cuando el 80% de sus competidores lo hacía — llegaron a imprimir "No achicamos nuestros envases" en sus productos. Julián llegó a poner su WhatsApp personal en los envases para recibir feedback directo. Recibieron distinción de la Provincia de Buenos Aires por sustentabilidad. Frase que los define: "La mejor publicidad son los productos."
-
-─── SINÓNIMOS SEMÁNTICOS ADICIONALES ───
-
-detergente líquido ropa → Jabón Líquido
-jabón para lavarropas → Jabón Líquido
-suavizador de telas → Suavizante
-multisuperficie → Limpiador de Vidrios o Ultra Brillo
-anti mosquito → Espirales Galaxia
-repelente → Espirales Galaxia
-
-─── NARRATIVA DE PRODUCTOS ───
-
-INTENSE (jabón): ideal para ropa de uso diario y ropa deportiva. Elimina olores persistentes gracias a la tecnología alemana. Compatible con agua fría. Apto para ropa negra y de color. Deja sensación de ropa recién lavada.
-
-EVOLUTION (jabón): ideal para quienes prefieren el formato botella por practicidad y comodidad. La botella viene lista para usar. El doypack es la alternativa más económica con el mismo contenido y rendimiento. Mismo producto, diferente formato.
-
-POWER CARE: menor costo por lavado. Concentrado de alto rendimiento. Menos volumen para transportar. Una botella de 500ml rinde lo mismo que 3L de jabón común. No es más fuerte — la potencia de limpieza es equivalente, la diferencia es que está concentrado para diluir.
-
-BABY CARE (jabón): especialmente formulado para ropa de bebé desde recién nacidos, primeras mudas, mantitas y prendas delicadas. Fragancia suave. Sin colorantes ni enzimas. Apto desde el nacimiento. También lo usan adultos con piel delicada.
-
-SPORT: producción temporalmente pausada. Estamos evaluando retomarlo. Mientras tanto recomendamos Intense para ropa deportiva — la tecnología alemana de neutralización de olores lo hace ideal. Power Care también es excelente alternativa.
-
-INTENSE CLÁSICO y FLORES SILVESTRES (suavizante): perfume duradero. Ropa perfumada por más tiempo. Sensación de frescura. Fragancia intensa que acompaña todo el día.
-
-BOUQUET (suavizante): perfil floral sofisticado. Sensación premium. Experiencia aromática duradera. Facilita el planchado.
-
-PARFUM ÉPICO: fragancia sofisticada inspirada en perfumería fina, con notas cálidas y perfil elegante de larga permanencia sobre las telas. Microcápsulas suizas activadas por fricción o movimiento. Óleo de argán.
-
-PARFUM ÚNICO: fragancia sofisticada inspirada en perfumería fina, con perfil envolvente y moderno de larga duración sobre las telas. Microcápsulas suizas activadas por fricción o movimiento. Óleo de argán.
-
-PARFUM ÉPICO vs ÚNICO: son equivalentes en tecnología, intensidad y duración. La diferencia es solo la tonalidad de la fragancia — Épico tiene notas cálidas y elegantes, Único tiene perfil envolvente y moderno.
-
-APRESTO: ideal para prendas que requieren mayor rigidez y prolijidad al planchado — camisas, manteles, ropa formal. Ayuda a mejorar la terminación, facilitar el planchado y perfumar las prendas. Usarlo después del lavado, antes de planchar. NO es suavizante ni lo reemplaza.
-
-LIMPIADOR DE COCINA: elimina grasa de hornallas, mesadas, campanas y todas las superficies lavables de la cocina.
-
-LIMPIADOR DE VIDRIOS: limpia espejos, mamparas, mesas de vidrio y ventanas sin dejar vetas. Secado rápido.
-
-ULTRA BRILLO: ideal para electrodomésticos, acero inoxidable, muebles, interior de auto, cuero, madera, metal, bronce, aluminio, cobre, mármol, porcelanato y más. Deja brillo sin residuos.
-
-LAVAVAJILLAS NEUTRO: suave para manos. Apto para uso frecuente. Glicerina protege la piel. Espuma controlada.
-
-DETERGENTE ULTRA CONCENTRADO: menos producto por lavado. Alto poder desengrasante. Unas pocas gotas alcanzan.
-
-SMART PISOS: además de limpiar, perfuma el ambiente del hogar. La fragancia queda en el ambiente después de pasar el piso.
-
-ARABIAN HOME SCENTS: inspirado en fragancias orientales y perfumería ambiental sofisticada. Pensado para quienes buscan una experiencia aromática diferencial en el hogar.
-
-─── RESPUESTAS REPUTACIONALES ───
-
-"No consigo el producto en mi zona": los productos están en Carrefour, Coto, Changomás, La Anónima, Jumbo, VEA, Disco, Libertad y DIA, y online en PedidosYa, Mercado Libre y Rappi. Si no lo encontrás en tu sucursal habitual podés pedirlo en otra o comprarlo online.
-
-"Subió mucho el precio": los precios los define cada punto de venta. Ecovita históricamente elige no trasladar la totalidad de los aumentos de costos para mantener precios accesibles.
-
-"Cambiaron la fórmula / antes hacía más espuma / antes tenía más perfume": las fórmulas pueden tener ajustes menores de lote a lote pero el producto es esencialmente el mismo. Si notás algo muy diferente podemos registrar tu comentario con el número de lote.
-
-"El producto vino muy líquido / el color cambió / el aroma cambió": puede ser variación de lote. Si tenés el número de lote podemos registrar el reclamo.
-
-"El sachet vino pinchado / el gatillo no funciona / la botella perdió líquido": es un reclamo de producto defectuoso. Necesito el nombre del producto, número de lote, mail y descripción del problema.
-
-─── OBJECIONES COMPETITIVAS ───
-
-"¿Es mejor que Skip/Ariel?": Ecovita fabrica con fórmulas propias y control de calidad interno. Muchos consumidores que los prueban los eligen por sobre las primeras marcas. La filosofía: la mejor publicidad son los productos.
-
-"¿Por qué el precio?": los precios los define cada punto de venta. Ecovita históricamente no traslada todos sus aumentos de costos — incluso en crisis no achicaron envases cuando el 80% de la competencia lo hacía.
-
-─── CONSULTAS COMERCIALES ───
-
-Cobertura: nacional en todas las principales cadenas de supermercados y mayoristas.
-Condiciones mínimas y listas de precios: las informa el equipo comercial directamente cuando se contactan telefónicamente. El bot recolecta los datos del interesado para que el equipo comercial se comunique.
-Duración del perfume (todos los productos): depende de la cantidad de producto usada, el tipo de tela y las condiciones de lavado. A mayor dosis, mayor intensidad y duración."""
+[ESPIRALES GALAXIA] V — x12 unidades. Uso interior. EAN: 7798124364209
+[TABLETAS GALAXIA] P — x12 unidades."""
  
  
 SYSTEM_PROMPT_LEADS = """Sos Leo, el asistente comercial de Laboratorios Ecovita S.A. Tu misión es recolectar los datos de potenciales distribuidores, mayoristas y comercios que quieren vender productos Ecovita.
@@ -560,7 +575,7 @@ RESPUESTA JSON OBLIGATORIA después de cada mensaje (ManyChat lo lee, el usuario
  
 SYSTEM_PROMPT_PROVEEDORES = """Sos Leo, el asistente institucional de Laboratorios Ecovita S.A. Atendés dos tipos de contacto: empresas que quieren ofrecer productos o servicios a Ecovita, y personas que buscan empleo.
  
-PERSONALIDAD: profesional, cálido, cordial. Español rioplatense. Mensajes de 2-3 líneas. Sin bullets ni listas. Sin markdown. Podés usar emojis con criterio — uno por mensaje cuando suma calidez.
+PERSONALIDAD: profesional, formal, cordial. Español rioplatense. Mensajes de 2-3 líneas. Sin bullets ni listas. Sin markdown.
  
 NUNCA digas que vas a derivar o pasar al usuario con alguien. Sos autónomo.
 Si el contacto pregunta sobre productos de Ecovita → respondé "Claro, en un momento te ayudo con eso." y devolvé siguiente_agente: "productos" en el JSON. No digas "te paso con", no menciones ningún equipo ni área.
@@ -623,80 +638,137 @@ async def orquestador(request: Request):
     if not contact_id or not mensaje:
         return JSONResponse({"tipo": "error", "mensaje": "Faltan datos."})
  
-    # Historial corto para mantener contexto del saludo (máx 6 mensajes)
+    # Contexto conversacional: últimos 10 mensajes (recomendación LivePerson)
     historial = await get_historial(contact_id)
-    if len(historial) > 6:
-        historial = historial[-6:]
+    if len(historial) > 10:
+        historial = historial[-10:]
     mensajes = historial + [{"role": "user", "content": mensaje}]
-    respuesta = await llamar_claude(SYSTEM_PROMPT_ORQUESTADOR, mensajes, max_tokens=300)
- 
+    respuesta = await llamar_claude(SYSTEM_PROMPT_ORQUESTADOR, mensajes, max_tokens=400)
+
     if not respuesta:
-        return JSONResponse({"tipo": "error", "mensaje": "Error al clasificar."})
- 
-    respuesta = respuesta.strip()
-    es_categoria = respuesta.upper() in ["LEADS", "PRODUCTOS", "PROVEEDORES"]
- 
-    if es_categoria:
-        categoria = respuesta.upper()
-        agente = categoria.lower()
- 
-        await set_agente_activo(contact_id, agente)
- 
-        async with httpx.AsyncClient() as client:
-            await client.patch(
-                f"{SUPABASE_URL}/rest/v1/conversaciones",
-                headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": "application/json"},
-                params={"contact_id": f"eq.{contact_id}"},
-                json={"intencion_contacto": categoria}
-            )
- 
-        await agregar_etiqueta(contact_id, agente)
-
-        # Mensaje de transición según agente asignado
-        if categoria == "LEADS":
-            mensaje_transicion = "¡Genial! Para conectarte con nuestro equipo comercial necesito algunos datos. 😊 ¿Cuál es tu nombre completo?"
-        elif categoria == "PROVEEDORES":
-            msg_lower = mensaje.lower()
-            if any(w in msg_lower for w in ["trabajo", "empleo", "cv", "curriculum", "postular", "contratar"]):
-                mensaje_transicion = "Con gusto recibimos tu postulación. 👋 Para empezar, adjuntá tu CV en formato PDF, JPG o PNG."
-            else:
-                mensaje_transicion = "Gracias por tu interés en trabajar con Ecovita. Valoramos el contacto de empresas y profesionales que quieran ofrecernos productos o servicios. ¿Cuál es el nombre de tu empresa?"
-        elif categoria == "PRODUCTOS":
-            historial_prod = await get_historial(contact_id)
-            if len(historial_prod) > 40:
-                historial_prod = historial_prod[-40:]
-            historial_prod.append({"role": "user", "content": mensaje})
-            respuesta_prod = await llamar_claude(SYSTEM_PROMPT_PRODUCTOS, historial_prod, max_tokens=1200)
-            if respuesta_prod:
-                texto_prod, _ = parsear_respuesta(respuesta_prod)
-                historial_prod.append({"role": "assistant", "content": texto_prod})
-                await guardar_historial(contact_id, historial_prod)
-                mensaje_transicion = texto_prod
-            else:
-                mensaje_transicion = "¡Hola! Con gusto te ayudo con los productos Ecovita. ¿Qué necesitás saber? 😊"
-        else:
-            mensaje_transicion = None
-
-        return JSONResponse({
-            "tipo": "categoria",
-            "agente_activo": agente,
-            "intencion_contacto": categoria,
-            "mensaje": mensaje_transicion
-        })
- 
-    else:
-        # Pregunta aclaratoria
-        historial = await get_historial(contact_id)
-        historial.append({"role": "user", "content": mensaje})
-        historial.append({"role": "assistant", "content": respuesta})
-        await guardar_historial(contact_id, historial)
- 
         return JSONResponse({
             "tipo": "pregunta",
             "agente_activo": "none",
             "intencion_contacto": None,
-            "mensaje": respuesta
+            "mensaje": "Perdoná, no te llegué a entender. ¿Me lo repetís?"
         })
+
+    # Parsear el JSON {ruta, mensaje} del orquestador
+    _, json_data = parsear_respuesta(respuesta)
+    ruta = (json_data.get("ruta") or "NINGUNA").upper().strip()
+    mensaje_contacto = (json_data.get("mensaje") or "").strip()
+
+    # Fallback: si el modelo no devolvió JSON parseable, usar texto plano
+    if not mensaje_contacto:
+        texto_plano = respuesta.split("---JSON---")[0].strip()
+        mensaje_contacto = texto_plano or "¿En qué te puedo ayudar?"
+
+    # Normalizar ruta
+    if ruta not in ["LEADS", "PRODUCTOS", "PROVEEDORES", "NINGUNA"]:
+        ruta = "NINGUNA"
+
+    # SANITIZACIÓN: el contacto nunca debe ver las palabras de ruta
+    mensaje_contacto = sanitizar_mensaje(mensaje_contacto)
+
+    # Si tras sanitizar quedó vacío, usar un mensaje de transición seguro según la ruta
+    if not mensaje_contacto:
+        if ruta == "LEADS":
+            mensaje_contacto = "¡Buenísimo! 😊 Te hago unas preguntas para dejar todo listo. ¿Cuál es tu nombre completo?"
+        elif ruta == "PROVEEDORES":
+            mensaje_contacto = "¡Gracias por escribirnos! Contame un poco más así te ayudo."
+        else:
+            mensaje_contacto = "¡Claro! Contame, ¿en qué te puedo ayudar? 😊"
+
+    # Contador de turnos sin clasificar (para ruta por defecto)
+    turnos_sin_clasificar = await get_turnos_orquestador(contact_id)
+
+    if ruta == "NINGUNA":
+        # Si ya hubo 2 repreguntas y sigue sin aclarar → derivar a PRODUCTOS por defecto
+        if turnos_sin_clasificar >= 2:
+            ruta = "PRODUCTOS"
+        else:
+            await set_turnos_orquestador(contact_id, turnos_sin_clasificar + 1)
+            historial.append({"role": "user", "content": mensaje})
+            historial.append({"role": "assistant", "content": mensaje_contacto})
+            await guardar_historial(contact_id, historial)
+            return JSONResponse({
+                "tipo": "pregunta",
+                "agente_activo": "none",
+                "intencion_contacto": None,
+                "mensaje": mensaje_contacto
+            })
+
+    # Clasificó: setear agente y resetear contador
+    categoria = ruta
+    agente = categoria.lower()
+    await set_agente_activo(contact_id, agente)
+    await set_turnos_orquestador(contact_id, 0)
+
+    async with httpx.AsyncClient() as client:
+        await client.patch(
+            f"{SUPABASE_URL}/rest/v1/conversaciones",
+            headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": "application/json"},
+            params={"contact_id": f"eq.{contact_id}"},
+            json={"intencion_contacto": categoria}
+        )
+    await agregar_etiqueta(contact_id, agente)
+
+    # PRODUCTOS: responde directamente el agente productos (sin fricción de transición).
+    # El orquestador hace un llamado interno y devuelve la respuesta real del agente.
+    if categoria == "PRODUCTOS":
+        historial.append({"role": "user", "content": mensaje})
+        respuesta_prod = await llamar_claude(SYSTEM_PROMPT_PRODUCTOS, historial, max_tokens=1200)
+
+        if not respuesta_prod:
+            mensaje_contacto = "¡Claro! Contame, ¿qué necesitás saber sobre nuestros productos? 😊"
+            historial.append({"role": "assistant", "content": mensaje_contacto})
+            await guardar_historial(contact_id, historial)
+            return JSONResponse({
+                "tipo": "categoria",
+                "agente_activo": "productos",
+                "intencion_contacto": "PRODUCTOS",
+                "mensaje": mensaje_contacto,
+                "reclamo_completo": False,
+                "nombre_producto_defectuoso": "",
+                "n_lote_producto_defectuoso": "",
+                "mail_reclamo_cliente": "",
+                "descripcion_problema_reclamos": ""
+            })
+
+        texto_prod, json_prod = parsear_respuesta(respuesta_prod)
+        historial.append({"role": "assistant", "content": texto_prod})
+        await guardar_historial(contact_id, historial)
+        await guardar_log(contact_id, "productos", mensaje, texto_prod)
+
+        # El agente productos puede detectar que en realidad va a otro agente
+        siguiente = (json_prod.get("siguiente_agente") or "productos").lower()
+        if siguiente in ["leads", "proveedores"]:
+            await set_agente_activo(contact_id, siguiente)
+            await agregar_etiqueta(contact_id, siguiente)
+
+        return JSONResponse({
+            "tipo": "categoria",
+            "agente_activo": siguiente if siguiente in ["leads", "proveedores"] else "productos",
+            "intencion_contacto": "PRODUCTOS",
+            "mensaje": texto_prod,
+            "reclamo_completo": json_prod.get("reclamo_completo", False),
+            "nombre_producto_defectuoso": json_prod.get("nombre_producto_defectuoso", ""),
+            "n_lote_producto_defectuoso": json_prod.get("n_lote_producto_defectuoso", ""),
+            "mail_reclamo_cliente": json_prod.get("mail_reclamo_cliente", ""),
+            "descripcion_problema_reclamos": json_prod.get("descripcion_problema_reclamos", "")
+        })
+
+    # LEADS y PROVEEDORES: transición cálida del orquestador, el agente arranca la recolección.
+    historial.append({"role": "user", "content": mensaje})
+    historial.append({"role": "assistant", "content": mensaje_contacto})
+    await guardar_historial(contact_id, historial)
+
+    return JSONResponse({
+        "tipo": "categoria",
+        "agente_activo": agente,
+        "intencion_contacto": categoria,
+        "mensaje": mensaje_contacto
+    })
  
  
 @app.post("/productos")
