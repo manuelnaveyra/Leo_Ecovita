@@ -810,7 +810,8 @@ CIERRE según tipo de negocio — solo al terminar la recolección:
 REGLAS:
 - Recolectá un dato por mensaje, no hagas varias preguntas juntas.
 - No des precios ni condiciones comerciales.
-- Si el contacto se va por las ramas, redirigí con naturalidad.
+- NUNCA des información sobre productos (fragancias, formatos, características, rendimiento, dónde comprar) ni respondas reclamos: NO es tu área y no debés inventar nada. Si el contacto pregunta algo de productos o reporta un problema con un producto, devolvé siguiente_agente: "productos". El sistema hace que esa consulta la responda el área correcta y la charla vuelve sola a la recolección.
+- Si retomás la recolección después de que el contacto consultó otra cosa, revisá el historial y seguí por el primer dato que falte; no repitas preguntas ya respondidas.
 - Solo texto plano, sin markdown.
  
 POST-RECOLECCIÓN: cuando ya tenés los 8 campos y el usuario sigue escribiendo, respondé sus preguntas de seguimiento y mantené siguiente_agente: "leads". Si el usuario se despide usá este texto exacto: "Gracias por comunicarte con el asistente virtual de Ecovita. Quedo a disposición para lo que necesites. Hasta la próxima 👋" y poné siguiente_agente: "none".
@@ -871,7 +872,73 @@ RESPUESTA JSON OBLIGATORIA después de cada mensaje (ManyChat lo lee, el usuario
 - Si el contacto pregunta sobre productos → siguiente_agente: "productos".
 - Si el contacto se despide → siguiente_agente: "none".
 - siguiente_agente NUNCA puede ser null. Por defecto siempre es "proveedores"."""
- 
+# ─────────────────────────────────────────────
+# DISPATCHER — alternancia entre agentes sin costuras
+# ─────────────────────────────────────────────
+
+SYSTEM_PROMPTS = {
+    "productos": SYSTEM_PROMPT_PRODUCTOS,
+    "leads": SYSTEM_PROMPT_LEADS,
+    "proveedores": SYSTEM_PROMPT_PROVEEDORES,
+}
+
+AGENTES_CONTENIDO = ("productos", "leads", "proveedores")
+
+
+async def resolver_agente(agente: str, historial: list, max_saltos: int = 2):
+    """Corre el agente activo. Si detecta que el mensaje es de otro agente
+    (siguiente_agente distinto), re-enruta el MISMO mensaje al destino para que
+    sea ÉL quien responda. Ningún agente contesta fuera de su área.
+    Devuelve (agente_final, texto, json_data)."""
+    actual = agente if agente in AGENTES_CONTENIDO else "productos"
+    saltos = 0
+    while True:
+        raw = await llamar_claude(SYSTEM_PROMPTS[actual], historial, max_tokens=1200)
+        if not raw:
+            return actual, None, {}
+        texto, json_data = parsear_respuesta(raw)
+        siguiente = (json_data.get("siguiente_agente") or actual).strip().lower()
+        if siguiente in AGENTES_CONTENIDO and siguiente != actual and saltos < max_saltos:
+            actual = siguiente
+            saltos += 1
+            continue
+        return actual, texto, json_data
+
+
+async def procesar_mensaje(agente_inicial: str, contact_id: str, mensaje: str):
+    """Lógica común a los 3 agentes: historial + handoff inmediato + guardado +
+    actualización de agente_activo. Devuelve (texto, json_data, siguiente_agente)
+    o None si Claude no respondió."""
+    historial = await get_historial(contact_id)
+    if len(historial) > 40:
+        historial = historial[-40:]
+    historial.append({"role": "user", "content": mensaje})
+
+    agente_final, texto, json_data = await resolver_agente(agente_inicial, historial)
+    if texto is None:
+        return None
+
+    historial.append({"role": "assistant", "content": texto})
+    await guardar_historial(contact_id, historial)
+    await guardar_log(contact_id, agente_final, mensaje, texto)
+
+    siguiente_raw = (json_data.get("siguiente_agente") or agente_final).strip().lower()
+    nuevo = "none" if siguiente_raw == "none" else agente_final
+
+    if nuevo == "none":
+        await set_agente_activo(contact_id, "none")
+    elif nuevo != agente_inicial:
+        await set_agente_activo(contact_id, nuevo)
+        await agregar_etiqueta(contact_id, nuevo)
+        async with httpx.AsyncClient() as client:
+            await client.patch(
+                f"{SUPABASE_URL}/rest/v1/conversaciones",
+                headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": "application/json"},
+                params={"contact_id": f"eq.{contact_id}"},
+                json={"intencion_contacto": nuevo.upper()}
+            )
+
+    return texto, json_data, nuevo 
  
 # ─────────────────────────────────────────────
 # ENDPOINTS
@@ -968,9 +1035,7 @@ async def orquestador(request: Request):
 
     # Guardar el turno en el historial (solo el mensaje del usuario; la respuesta
     # la genera y guarda el endpoint del agente correspondiente).
-    historial.append({"role": "user", "content": mensaje})
-    await guardar_historial(contact_id, historial)
-
+    
     # El orquestador SOLO clasifica y setea agente_activo. NO manda contenido.
     # ManyChat, en el mismo flujo, detecta agente_activo y llama al endpoint del agente,
     # que es quien genera la primera respuesta. Así se evita el doble mensaje
@@ -988,55 +1053,25 @@ async def productos(request: Request):
     body = await request.json()
     contact_id = str(body.get("contact_id", ""))
     mensaje = body.get("mensaje_usuario", "")
- 
+
     if not contact_id or not mensaje:
         return JSONResponse({
             "respuesta": "No pude procesar tu mensaje. Intentá de nuevo.",
-            "siguiente_agente": "productos",
-            "reclamo_completo": False,
-            "nombre_producto_defectuoso": "",
-            "n_lote_producto_defectuoso": "",
-            "mail_reclamo_cliente": "",
-            "descripcion_problema_reclamos": ""
+            "siguiente_agente": "productos", "reclamo_completo": False,
+            "nombre_producto_defectuoso": "", "n_lote_producto_defectuoso": "",
+            "mail_reclamo_cliente": "", "descripcion_problema_reclamos": ""
         })
- 
-    historial = await get_historial(contact_id)
-    if len(historial) > 40:
-        historial = historial[-40:]
- 
-    historial.append({"role": "user", "content": mensaje})
-    respuesta_raw = await llamar_claude(SYSTEM_PROMPT_PRODUCTOS, historial, max_tokens=1200)
- 
-    if not respuesta_raw:
+
+    resultado = await procesar_mensaje("productos", contact_id, mensaje)
+    if resultado is None:
         return JSONResponse({
             "respuesta": "Tardé más de lo esperado. ¿Podés repetir tu mensaje?",
-            "siguiente_agente": "productos",
-            "reclamo_completo": False,
-            "nombre_producto_defectuoso": "",
-            "n_lote_producto_defectuoso": "",
-            "mail_reclamo_cliente": "",
-            "descripcion_problema_reclamos": ""
+            "siguiente_agente": "productos", "reclamo_completo": False,
+            "nombre_producto_defectuoso": "", "n_lote_producto_defectuoso": "",
+            "mail_reclamo_cliente": "", "descripcion_problema_reclamos": ""
         })
- 
-    texto, json_data = parsear_respuesta(respuesta_raw)
- 
-    historial.append({"role": "assistant", "content": texto})
-    await guardar_historial(contact_id, historial)
-    await guardar_log(contact_id, "productos", mensaje, texto)
- 
-    siguiente_agente = json_data.get("siguiente_agente", "productos") or "productos"
- 
-    if siguiente_agente in ["leads", "proveedores"]:
-        await set_agente_activo(contact_id, siguiente_agente)
-        await agregar_etiqueta(contact_id, siguiente_agente)
-        async with httpx.AsyncClient() as client:
-            await client.patch(
-                f"{SUPABASE_URL}/rest/v1/conversaciones",
-                headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": "application/json"},
-                params={"contact_id": f"eq.{contact_id}"},
-                json={"intencion_contacto": siguiente_agente.upper()}
-            )
- 
+    texto, json_data, siguiente_agente = resultado
+
     return JSONResponse({
         "respuesta": texto,
         "siguiente_agente": siguiente_agente,
@@ -1046,69 +1081,40 @@ async def productos(request: Request):
         "mail_reclamo_cliente": json_data.get("mail_reclamo_cliente", ""),
         "descripcion_problema_reclamos": json_data.get("descripcion_problema_reclamos", "")
     })
- 
- 
+
+
 @app.post("/leads")
 async def leads(request: Request):
     body = await request.json()
     contact_id = str(body.get("contact_id", ""))
     mensaje = body.get("mensaje_usuario", "")
- 
+
     if not contact_id or not mensaje:
         return JSONResponse({
             "respuesta": "No pude procesar tu mensaje. Intentá de nuevo.",
-            "siguiente_agente": "leads",
-            "recoleccion_completa": False,
+            "siguiente_agente": "leads", "recoleccion_completa_leads": False,
             "nombre_contacto_vendedor": "", "nombre_comercio": "",
             "mail_comercio_vendedor": "", "ciudad_comercio_vendedor": "",
             "direccion_potencial_cliente": "", "tipo_empresa_vendedor": "",
             "volumen_comercio_vendedor": "", "mensaje_adicional_potencial_cliente": ""
         })
- 
-    historial = await get_historial(contact_id)
-    if len(historial) > 40:
-        historial = historial[-40:]
- 
-    historial.append({"role": "user", "content": mensaje})
-    respuesta_raw = await llamar_claude(SYSTEM_PROMPT_LEADS, historial, max_tokens=1200)
- 
-    if not respuesta_raw:
+
+    resultado = await procesar_mensaje("leads", contact_id, mensaje)
+    if resultado is None:
         return JSONResponse({
             "respuesta": "Tardé más de lo esperado. ¿Podés repetir tu mensaje?",
-            "siguiente_agente": "leads",
-            "recoleccion_completa": False,
+            "siguiente_agente": "leads", "recoleccion_completa_leads": False,
             "nombre_contacto_vendedor": "", "nombre_comercio": "",
             "mail_comercio_vendedor": "", "ciudad_comercio_vendedor": "",
             "direccion_potencial_cliente": "", "tipo_empresa_vendedor": "",
             "volumen_comercio_vendedor": "", "mensaje_adicional_potencial_cliente": ""
         })
- 
-    texto, json_data = parsear_respuesta(respuesta_raw)
- 
-    historial.append({"role": "assistant", "content": texto})
-    await guardar_historial(contact_id, historial)
-    await guardar_log(contact_id, "leads", mensaje, texto)
- 
-    recoleccion_completa_leads = json_data.get("recoleccion_completa", False)
-    siguiente_agente = json_data.get("siguiente_agente", "leads") or "leads"
- 
-    if siguiente_agente == "none":
-        await set_agente_activo(contact_id, "none")
-    elif siguiente_agente in ["productos", "proveedores"]:
-        await set_agente_activo(contact_id, siguiente_agente)
-        await agregar_etiqueta(contact_id, siguiente_agente)
-        async with httpx.AsyncClient() as client:
-            await client.patch(
-                f"{SUPABASE_URL}/rest/v1/conversaciones",
-                headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": "application/json"},
-                params={"contact_id": f"eq.{contact_id}"},
-                json={"intencion_contacto": siguiente_agente.upper()}
-            )
- 
+    texto, json_data, siguiente_agente = resultado
+
     return JSONResponse({
         "respuesta": texto,
         "siguiente_agente": siguiente_agente,
-        "recoleccion_completa_leads": recoleccion_completa_leads,
+        "recoleccion_completa_leads": json_data.get("recoleccion_completa", False),
         "nombre_contacto_vendedor": json_data.get("nombre_contacto_vendedor", ""),
         "nombre_comercio": json_data.get("nombre_comercio", ""),
         "mail_comercio_vendedor": json_data.get("mail_comercio_vendedor", ""),
@@ -1118,69 +1124,38 @@ async def leads(request: Request):
         "volumen_comercio_vendedor": json_data.get("volumen_comercio_vendedor", ""),
         "mensaje_adicional_potencial_cliente": json_data.get("mensaje_adicional_potencial_cliente", "")
     })
- 
- 
+
+
 @app.post("/proveedores")
 async def proveedores(request: Request):
     body = await request.json()
     contact_id = str(body.get("contact_id", ""))
     mensaje = body.get("mensaje_usuario", "")
- 
+
     if not contact_id or not mensaje:
         return JSONResponse({
             "respuesta": "No pude procesar tu mensaje. Intentá de nuevo.",
-            "siguiente_agente": "proveedores",
-            "recoleccion_completa": False,
-            "tipo": "", "nombre_proveedor": "",
-            "producto_o_servicio_proveedor": "", "redes_proveedor": "",
-            "dato_contacto_proveedor": "", "mail_proveedor": "",
+            "siguiente_agente": "proveedores", "recoleccion_completa_proveedores": False,
+            "tipo": "", "nombre_proveedor": "", "producto_o_servicio_proveedor": "",
+            "redes_proveedor": "", "dato_contacto_proveedor": "", "mail_proveedor": "",
             "cv_archivo_2": "", "comentario_cv": ""
         })
- 
-    historial = await get_historial(contact_id)
-    if len(historial) > 40:
-        historial = historial[-40:]
- 
-    historial.append({"role": "user", "content": mensaje})
-    respuesta_raw = await llamar_claude(SYSTEM_PROMPT_PROVEEDORES, historial, max_tokens=1200)
- 
-    if not respuesta_raw:
+
+    resultado = await procesar_mensaje("proveedores", contact_id, mensaje)
+    if resultado is None:
         return JSONResponse({
             "respuesta": "Tardé más de lo esperado. ¿Podés repetir tu mensaje?",
-            "siguiente_agente": "proveedores",
-            "recoleccion_completa": False,
-            "tipo": "", "nombre_proveedor": "",
-            "producto_o_servicio_proveedor": "", "redes_proveedor": "",
-            "dato_contacto_proveedor": "", "mail_proveedor": "",
+            "siguiente_agente": "proveedores", "recoleccion_completa_proveedores": False,
+            "tipo": "", "nombre_proveedor": "", "producto_o_servicio_proveedor": "",
+            "redes_proveedor": "", "dato_contacto_proveedor": "", "mail_proveedor": "",
             "cv_archivo_2": "", "comentario_cv": ""
         })
- 
-    texto, json_data = parsear_respuesta(respuesta_raw)
- 
-    historial.append({"role": "assistant", "content": texto})
-    await guardar_historial(contact_id, historial)
-    await guardar_log(contact_id, "proveedores", mensaje, texto)
- 
-    recoleccion_completa_proveedores = json_data.get("recoleccion_completa", False)
-    siguiente_agente = json_data.get("siguiente_agente", "proveedores") or "proveedores"
- 
-    if siguiente_agente == "none":
-        await set_agente_activo(contact_id, "none")
-    elif siguiente_agente in ["productos", "leads"]:
-        await set_agente_activo(contact_id, siguiente_agente)
-        await agregar_etiqueta(contact_id, siguiente_agente)
-        async with httpx.AsyncClient() as client:
-            await client.patch(
-                f"{SUPABASE_URL}/rest/v1/conversaciones",
-                headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": "application/json"},
-                params={"contact_id": f"eq.{contact_id}"},
-                json={"intencion_contacto": siguiente_agente.upper()}
-            )
- 
+    texto, json_data, siguiente_agente = resultado
+
     return JSONResponse({
         "respuesta": texto,
         "siguiente_agente": siguiente_agente,
-        "recoleccion_completa_proveedores": recoleccion_completa_proveedores,
+        "recoleccion_completa_proveedores": json_data.get("recoleccion_completa", False),
         "tipo": json_data.get("tipo", ""),
         "nombre_proveedor": json_data.get("nombre_proveedor", ""),
         "producto_o_servicio_proveedor": json_data.get("producto_o_servicio_proveedor", ""),
