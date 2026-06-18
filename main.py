@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import httpx
 import os
 import json
+import asyncio
 from datetime import datetime
  
 app = FastAPI()
@@ -150,7 +151,13 @@ async def llamar_claude(system_prompt: str, mensajes: list, max_tokens: int = 70
                 json={
                     "model": "claude-haiku-4-5",
                     "max_tokens": max_tokens,
-                    "system": system_prompt,
+                    "system": [
+                        {
+                            "type": "text",
+                            "text": system_prompt,
+                            "cache_control": {"type": "ephemeral"}
+                        }
+                    ],
                     "messages": mensajes
                 }
             )
