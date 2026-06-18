@@ -370,176 +370,403 @@ RESPUESTA JSON OBLIGATORIA después de cada mensaje (ManyChat lo lee, el usuario
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 BASE DE CONOCIMIENTO — PRODUCTOS ECOVITA v4
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- 
-EMPRESA: Laboratorios Ecovita S.A. | 25 años fabricando productos de limpieza. San Martín, Buenos Aires, Argentina.
-Web: ecovita.com.ar | Instagram: @ecovitaok | Email: info@ecovita.com.ar | Tel: 011-47538206
- 
-ESTADOS: V=Vigente | D=Discontinuado (informar si cliente lo menciona, no recomendar) | P=Próximo lanzamiento
- 
-SINÓNIMOS:
+ Versión: 2026-06 | Fuentes: artes de packaging + catálogo 2026 + ecovita.com.ar
+
+=== EMPRESA ===
+Laboratorios Ecovita S.A. | Loma Hermosa, Buenos Aires, Argentina. 25 años fabricando productos de limpieza.
+Web: ecovita.com.ar | Instagram: @ecovitaok | Email: info@ecovita.com.ar | 
+RNE 020035459
+
+=== ESTADOS ===
+V=Vigente | D=Discontinuado (informar si cliente lo menciona, no recomendar) | P=Próximo lanzamiento
+
+=== SINÓNIMOS → nombre oficial ===
 Detergente ropa / líquido lavar ropa → Jabón Líquido
 Enjuague → Suavizante
 Antigrasa → Limpiador de Cocina
 Multiuso → Limpiador de Vidrios
 Detergente vajilla → Lavavajillas
 Ecosmart → Smart (mismo sistema)
- 
-PRECAUCIONES GENERALES (todos los productos):
+
+=== PRECAUCIONES GENERALES (todos los productos) ===
 Fuera del alcance de niños y animales. No mezclar con otros productos. No reutilizar envase. No transvasar a envases de alimentos/bebidas. No inhalar. No ingerir. Evitar contacto prolongado con piel; usar guantes. Conservar en lugar fresco y seco. Vigencia: 24 meses desde elaboración.
-Primeros auxilios: ojos/piel → lavar con abundante agua. Ingestión → no provocar vómito, beber agua. CNI 0800-3330160 (gratuito) | Hosp. Gutiérrez (011) 4962-6666 | Hosp. Posadas (011) 4658-6648.
- 
-DATOS COMUNES LÍNEA SMART:
-Sistema: sachet concentrado + agua = producto listo. 80% ahorro. 96% menos plástico. 5x más perfume.
+Primeros auxilios: ojos/piel → lavar con abundante agua. Ingestión → no provocar vómito, beber agua. CNI 0800-3330160 (gratuito) | Hosp. Gutiérrez (011) 4962-6666/2247 | Hosp. Posadas (011) 4658-6648 | Hosp. Niños La Plata (0221) 451-5555.
+
+=== DATOS COMUNES LÍNEA SMART ===
+Sistema: sachet concentrado + agua = producto listo. 80% ahorro vs formato tradicional. 96% menos plástico. 5x más perfume.
 Vigencia: 24 meses sin diluir. Una vez diluido: consumir en 3 meses. No lavar el envase para próximas diluciones.
 Compra por bulto (mayoristas/empresas): tienda Ecosmart en Tienda Nube, disponible junio 2026.
- 
-DATOS COMUNES SUAVIZANTES DOYPACK:
-Modo de uso: cortar con tijera por línea punteada, verter en botella Ecovita. AGITAR ANTES DE USAR. Agregar en último enjuague o gaveta. NO aplicar directamente sobre la ropa. No mezclar con detergente, lavandina ni blanqueadores.
-Dosificación: mano: 1 tapa en 10L agua | semiautomático: 2 tapas en enjuague | automático: nivel gaveta.
- 
-DATOS COMUNES SUAVIZANTES CONCENTRADOS BOTELLA:
-Modo de uso: verter en gaveta del lavarropas. AGITAR ANTES DE USAR. NO aplicar directamente sobre la ropa.
-Dosificación: 22,5ml (1% de la tapa) por lavado. Mano y automático (9-14kg): igual.
-Microcápsulas: fragancia liberada por fricción o movimiento. Base suiza.
- 
-─── 1. JABONES LÍQUIDOS PARA ROPA ───
- 
+Bultos: 3 displays por bulto. Sachets 27ml: 50/display | 150ml: 15/display | 135ml: 15/display.
+Envases asociados: 27ml → botella 900ml | 150ml → bidón 5L | lavavajillas 150ml → botella 500ml | jabón 135ml → botella 800ml.
+Frase clave: "Comprás el envase una sola vez y después reponés siempre con sachets, generando mucho menos plástico."
+
+=== DATOS COMUNES SUAVIZANTES DOYPACK ===
+Modo de uso: cortar con tijera por línea punteada, verter en botella Ecovita. AGITAR ANTES DE USAR. Agregar en último enjuague o gaveta. NO aplicar directamente sobre la ropa. No mezclar con detergente, lavandina ni blanqueadores. Derrame sobre prendas: lavar con agua tibia sin otros productos.
+Dosificación: mano: 60ml (1 tapa) en 10L agua | semiautomático: 120ml (2 tapas) en enjuague | automático: nivel gaveta.
+
+=== DATOS COMUNES SUAVIZANTES CONCENTRADOS BOTELLA ===
+Modo de uso: verter directamente en gaveta. AGITAR ANTES DE USAR. NO aplicar sobre la ropa.
+Dosificación: 22,5ml por lavado. Rinde 22 lavados por botella 500ml.
+Tecnología: microcápsulas suizas que liberan fragancia por fricción o movimiento.
+
+─────────────────────────────────────────
+1. JABONES LÍQUIDOS PARA ROPA
+─────────────────────────────────────────
+
 Modo de uso común: automático: 100ml gaveta (150ml ropa muy sucia). Semiautomático: 100ml sobre prendas. Manual: 100ml en 10L agua.
- 
-NOTA JABONES INTENSE / EVOLUTION / POWER CARE: los tres tienen fragancia intensa y de igual duración. La diferencia es solo el aroma (cada uno tiene su propia nota de fragancia) y el formato/fórmula. Power Care es el único concentrado para diluir. Los rendimientos son iguales por formato. No hay diferencia de intensidad ni duración de fragancia entre ellos.
- 
-[INTENSE] V — Doypack 800ml (8 lavados) / Doypack 3L (30 lavados)
-Baja espuma, apto lavarropas automático, biodegradable. Fragancia intensa. Tecnología alemana neutralización de olores. Solo disponible en doypack.
+
+NOTA INTENSE / EVOLUTION / POWER CARE: los tres tienen fragancia intensa y de igual duración. Cada uno tiene su propia nota de fragancia. Power Care es el único para diluir. No hay diferencia de intensidad entre ellos. Evolution es el único que viene en botella reutilizable.
+
+[INTENSE] V
+Formatos: Doypack 800ml (8 lavados) | Doypack 3L (30 lavados). Solo disponible en doypack.
+Características: baja espuma, apto lavarropas automático, biodegradable. Tecnología alemana neutralización de olores.
+Fragancia: dulce floral aromática, con delicadas notas frutales y frescos acordes florales. Envolvente, elegante, armoniosamente perfumada.
+Diferencial: mayor carga de fragancia que un jabón común. El aroma se siente más intenso en cada lavado y perdura incluso después del secado y en el ropero.
 Composición: Agua, Tensioactivo Aniónico, Espesante, Regulador de Espuma, Conservante, Coadyuvantes.
 EAN 800ml: 7798124362359 | EAN 3L: 7798124362342
- 
-[EVOLUTION] V — Doypack 800ml (8 lavados) / Doypack 3L (30 lavados) / Botella 800ml (8 lavados) / Botella 3L (30 lavados)
-Baja espuma, apto lavarropas automático, biodegradable. Fragancia intensa. Botella reutilizable recargable con doypack Evolution o Intense.
+
+[EVOLUTION] V
+Formatos: Doypack 800ml (8 lavados) | Doypack 3L (30 lavados) | Botella 800ml (8 lavados) | Botella 1,5L (15 lavados) | Botella 3L (30 lavados).
+Características: baja espuma, apto lavarropas automático, biodegradable. Tecnología alemana neutralización de olores.
+Diferencial exclusivo: única línea con botella reutilizable recargable. Comprás la botella una vez y recargás con el doypack Evolution o Intense.
+Fragancia: floral y frutal, fresca y duradera. Queda impregnada después del centrifugado.
 Instrucción botella 800ml: llenar hasta marca (650ml) con agua potable, agregar doypack, cerrar y agitar.
 Instrucción botella 3L: llenar hasta marca (2,5L) con agua potable, agregar doypack, cerrar y agitar.
-Composición doypack: Agua, Tensioactivo Aniónico, Tensioactivo No Iónico, Regulador de Espuma, Espesante, Conservante, Fragancia, Coadyuvantes.
+Composición: Agua, Tensioactivo Aniónico, Tensioactivo No Iónico, Regulador de Espuma, Espesante, Conservante, Fragancia, Coadyuvantes.
 EAN Doypack 800ml: 7798124362229 | EAN Doypack 3L: 7798124362243 | EAN Botella 800ml: 7798124362250 | EAN Botella 3L: 7798124362649
- 
-DIFERENCIAS INTENSE vs EVOLUTION: ambos tienen fragancia intensa y de larga duración, baja espuma, biodegradables. La nota de fragancia es diferente (son fragancias distintas). La única diferencia de fórmula es que Intense tiene tecnología alemana de neutralización de olores. La única diferencia de formato es que Evolution viene en botella reutilizable recargable, Intense solo en doypack. NO hay diferencia en intensidad ni duración de fragancia entre ambos.
- 
-[POWER CARE — para diluir] V — Botella 500ml → rinde 3L / 30 lavados
-Concentrado para diluir. Baja espuma. Apto lavarropas automático. Tecnología suiza. Neutralización de olores (tecnología alemana). Ahorra hasta 20% vs Intense 3L.
-Dilución: 1) Llenar botella 3L con 2,5L agua potable primero. 2) Agregar los 500ml completos. 3) Cerrar y agitar. Una vez diluido usar en 3 meses.
+
+DIFERENCIAS INTENSE vs EVOLUTION: misma limpieza, misma duración de fragancia, misma baja espuma. Intense: fragancia floral dulce frutal + tecnología alemana de neutralización de olores, solo en doypack. Evolution: fragancia floral frutal diferente + botella reutilizable recargable.
+
+[POWER CARE — para diluir] V
+Formato: Botella 500ml → rinde 3L / 30 lavados.
+Diferencial: concentrado para diluir, ahorra hasta 20% vs Intense 3L. La opción más económica y sustentable de la línea.
+Fragancia: dulce floral aromática, con delicadas notas frutales y frescos acordes florales. Mismo estilo que Intense.
+Tecnología: suiza + alemana (neutralización de olores). Eficaz en ciclos en frío.
+Dilución: 1) Llenar botella 3L con 2,5L agua potable. 2) Agregar los 500ml completos. 3) Cerrar y agitar. Usar en 3 meses una vez diluido.
+Dosificación: 100ml (2 pocillos de café) por carga completa.
 Composición: Agua, Tensioactivo Aniónico, Tensioactivo No Iónico, Regulador de Espuma, Espesante, Blanqueador Óptico, Conservante, Fragancia, Colorantes y Coadyuvantes.
- 
-[BABY CARE Jabón] V — Doypack 800ml (8 lavados) / Doypack 3L (30 lavados)
-Fórmula hipoalergénica, libre de colorantes y enzimas, apto piel sensible y ropa de bebé. Baja espuma, apto lavarropas automático. Efectivo con manchas, para ropa blanca o de color.
+
+[JABÓN CON TOQUE DE SUAVIZANTE] V
+Formato: Doypack 3L (30 lavados).
+Diferencial: limpia y suaviza en un solo paso. Incorpora suavizante en la fórmula del jabón.
+Fragancia: comparte la fragancia del Suavizante Ecovita Clásico. Al usarlos juntos, el aroma se refuerza y dura más en las telas.
+Compatible con agua caliente y fría y todos los programas del lavarropas automático.
+
+[BABY CARE Jabón] V
+Formatos: Doypack 800ml (8 lavados) | Doypack 3L (30 lavados).
+Diferencial: fórmula hipoalergénica. Libre de colorantes y enzimas agresivas. Sin riesgo de irritación en pieles sensibles.
+Para: ropa de bebé, ropa interior, prendas finas, todo tejido que requiera cuidado especial.
+Fragancia: suave, dermatológicamente testeada.
 Composición: Agua, tensioactivo aniónico, betaína de coco, regulador de espuma, conservante, fragancia y coadyuvantes.
 EAN Doypack 800ml: 7798124361550 | EAN Doypack 3L: 7798124361598
- 
-[BIO] P — Doypack 800ml. Fórmula vegetal, cruelty free, sin fosfatos, biodegradable. Doypack reutilizable como maceta.
- 
-[SPORT] D — Doypack 800ml. Especializado en tejidos técnicos. Discontinuado.
- 
-[JABÓN LÍQUIDO ROPA SMART] V — Sachet 135ml → rinde 800ml / 8 lavados
-Sistema Smart. Dilución: 1) Colocar 665ml agua en envase vacío. 2) Agregar sachet completo. 3) Cerrar y agitar. Dejar reposar 15 min. 4) Dosificar 100ml por carga.
+
+[BIO] P
+Formato: Doypack 800ml (8 lavados). Próximo lanzamiento.
+Diferencial: fórmula vegetal, vegano, cruelty free, sin fosfatos, biodegradable. Doypack reutilizable como maceta.
+Fragancia: herbal y natural, con frescos acordes verdes y suaves notas aromáticas. Sensación limpia, revitalizante y agradablemente fresca.
+Para: pieles sensibles y familias comprometidas con el consumo responsable.
+
+[SPORT] D
+Formato: Doypack 800ml. Especializado en tejidos técnicos deportivos. Discontinuado. No recomendar.
+
+[INTENSE / EVOLUTION PARA DILUIR — Doypack y Botella 500ml] D
+Discontinuados. Informar si cliente los menciona que ya no están activos.
+EAN Intense Doypack 500ml: 7798124362359 | EAN Evolution Doypack 500ml: 7798124362250
+EAN Evolution Botella 500ml: 7798124362454 | EAN Intense Botella 500ml: 7798124362427
+
+[JABÓN LÍQUIDO ROPA SMART] V
+Formato: Sachet 135ml → rinde 800ml / 8 lavados.
+Sistema Smart. Dosificación: 100ml (2 pocillos de café) por carga completa.
+Dilución: 1) Colocar 665ml agua en envase vacío de 800ml. 2) Trasvasar sachet completo. 3) Cerrar y agitar. Dejar reposar 15 min. No lavar el envase para próximas diluciones.
 Composición: Agua, Tensioactivo Aniónico, Tensioactivo No Iónico, Regulador de Espuma, Espesante, Conservante, Fragancia, Coadyuvantes.
- 
-─── 2. SUAVIZANTES PARA ROPA ───
- 
-[INTENSE CLÁSICO] V — Doypack 900ml / Doypack 3L. Fragancia intensa. Microcápsulas tecnología suiza.
-Composición: Agua, suavizante catiónico, reguladores, esencia y colorante. EAN 3L: 7798124360881
- 
-[INTENSE FLORES SILVESTRES] V — Doypack 900ml / Doypack 3L. Fragancia intensa floral. Microcápsulas tecnología suiza.
+EAN sachet 135ml: EE-2025-10421100.
+
+─────────────────────────────────────────
+2. SUAVIZANTES PARA ROPA
+─────────────────────────────────────────
+
+[INTENSE CLÁSICO] V
+Formatos: Doypack 900ml | Doypack 3L.
+Fragancia: fresca y envolvente, con delicadas notas florales, acordes de algodón limpio y suaves almizcles blancos. Sensación duradera de frescura y suavidad.
+Tecnología: microcápsulas suizas que liberan fragancia con el movimiento, una vez seca la prenda. El perfume se siente desde que abrís el lavarropas y persiste en el ropero.
+EAN 3L: 7798124360881
+
+[INTENSE FLORES SILVESTRES] V
+Formatos: Doypack 900ml | Doypack 3L.
+Fragancia: flores silvestres con delicadas notas florales y verdes. Frescura natural, como un prado en primavera. Perfume fresco, natural y alegre.
+Tecnología: microcápsulas suizas. Fragancia dura todo el día y persiste en el ropero.
 EAN 3L: 7798124361017
- 
-[BOUQUET LIRIOS & YLANG YLANG] V — Doypack 900ml / Doypack 3L
-Microcápsulas tecnología suiza. Fragancia duradera. Protege de malos olores. Facilita el planchado.
+
+[BOUQUET LIRIOS & YLANG YLANG] V
+Formatos: Doypack 900ml | Doypack 3L.
+Fragancia: bouquet floral elegante donde la frescura de los lirios se combina con las exóticas notas de ylang ylang. Armoniosa, elegante, agradablemente perfumada.
+Tecnología: microcápsulas suizas. Libera fragancia con el movimiento de la prenda seca. Abrís el ropero y el perfume se siente de inmediato.
+Beneficios extra: protege de malos olores. Facilita el planchado.
 Composición: Agua, Tensioactivo Catiónico, Conservante, Esencia y Colorante.
 EAN 900ml: 7798124362564 | EAN 3L: 7798124362540
- 
-[BOUQUET ORQUÍDEAS & FLORES DE MUGUET] V — Doypack 900ml / Doypack 3L
-Microcápsulas tecnología suiza. Fragancia duradera. Protege de malos olores. Facilita el planchado.
+
+[BOUQUET ORQUÍDEAS & FLORES DE MUGUET] V
+Formatos: Doypack 900ml | Doypack 3L.
+Fragancia: elegante bouquet floral donde la delicadeza del muguet se fusiona con suaves notas de orquídea. Fresca, sofisticada y envolvente. Perfume que se mantiene horas después del lavado y el secado.
+Tecnología: microcápsulas suizas. Libera fragancia con el movimiento de la prenda seca.
+Beneficios extra: protege de malos olores. Facilita el planchado.
 EAN 900ml: 7798124362519
- 
-[PARFUM ÉPICO] V — Doypack 900ml / Botella concentrada 500ml (rinde 22 lavados)
-Microcápsulas tecnología suiza. Fragancia amaderada/sofisticada. Óleo de argán. Fragancia por más tiempo.
-Concentrado: ver datos comunes suavizantes concentrados botella. EAN Botella: 7798124362717
- 
-[PARFUM ÚNICO] V — Doypack 900ml / Botella concentrada 500ml (rinde 22 lavados)
-Microcápsulas tecnología suiza. Fragancia floral/dulce. Óleo de argán. Fragancia por más tiempo.
+
+[PARFUM ÉPICO] V
+Formatos: Doypack 900ml | Botella concentrada 500ml (22 lavados).
+Fragancia: inspirada en la perfumería fina. Delicadas flores blancas y elegantes acordes florales. Sofisticada, fresca y envolvente.
+Tecnología: microcápsulas suizas de liberación gradual con el movimiento. El óleo de argán aporta suavidad y un tacto aterciopelado a las fibras.
+Diferencial vs Único: misma tecnología Parfum Edition, distinta fragancia. Épico es más floral blanco/elegante. Único es más floral empolvado/dulce/cálido.
+Concentrado 500ml: dosificación 22,5ml por lavado, rinde 22 lavados. Mejor precio por lavado vs doypack.
+EAN Botella: 7798124362717
+
+[PARFUM ÚNICO] V
+Formatos: Doypack 900ml | Botella concentrada 500ml (22 lavados).
+Fragancia: inspirada en la perfumería fina. Elegantes notas florales empolvadas y delicados matices dulces. Sofisticada, cálida y duraderamente perfumada.
+Tecnología: microcápsulas suizas de liberación gradual con el movimiento. Óleo de argán para suavidad y tacto aterciopelado.
+Diferencial vs Épico: misma tecnología Parfum Edition, distinta fragancia. Único es más floral empolvado/dulce/cálido. Épico es más floral blanco/elegante/fresco.
+Concentrado 500ml: dosificación 22,5ml por lavado, rinde 22 lavados. Ver datos comunes suavizantes concentrados botella.
 EAN Botella: 7798124362724
- 
-NOTA SUAVIZANTES CONCENTRADOS: cuando preguntan por suavizantes concentrados, además de Épico y Único mencioná que próximamente va a estar disponible el Suavizante Smart Clásico en sachet para diluir, parte de la línea Ecosmart.
- 
-[BABY CARE Suavizante] V — Doypack 900ml. Fórmula hipoalergénica, libre de colorantes, apto piel sensible. EAN: 7798124361543
- 
-[SMART CLÁSICO Suavizante] P — Sachet 27ml → rinde 900ml / 10 lavados. Sistema Smart. Microcápsulas tecnología suiza.
-Dilución: llenar envase con 873ml agua, trasvasar sachet, cerrar y agitar.
- 
-[BOUQUET LILAS & FLORES BLANCAS] D — Discontinuado. No recomendar.
- 
-─── 3. APRESTO ───
- 
-[APRESTO CON AROMATIZANTE 2 EN 1 — Lirios & Ylang Ylang] V — Doypack 500ml recarga
-Almidón líquido + silicona + fragancia. Facilita el planchado. ⚠️ NO es suavizante.
-Modo de uso: cortar con tijera, verter en botella Apresto Spray. Rociar desde 30cm. Dejar penetrar. Planchar.
+
+NOTA SUAVIZANTES CONCENTRADOS: cuando pregunten por suavizantes concentrados, además de Épico y Único mencioná que próximamente va a estar disponible el Suavizante Smart Clásico en sachet, parte de la línea Ecosmart.
+
+[BABY CARE Suavizante] V
+Formato: Doypack 900ml.
+Diferencial: fórmula hipoalergénica, libre de colorantes, sin componentes agresivos. Fragancia suave, dermatológicamente testeada.
+Para: ropa interior, prendas finas, sábanas, toallas, cualquier tejido delicado. Pieles muy sensibles o reactivas.
+EAN: 7798124361543
+
+[SMART CLÁSICO Suavizante] P
+Formatos próximos: Sachet 27ml → rinde 900ml / 10 lavados |.
+Sistema Smart. Microcápsulas suizas. Liberación de fragancia por fricción/movimiento o calor.
+Dilución 27ml: llenar envase con 873ml agua, trasvasar sachet, cerrar y agitar.
+EAN sachet 27ml: 7798124364360 | EAN sachet 90ml: 7798124364377
+
+[BOUQUET LILAS & FLORES BLANCAS] D
+Discontinuado. No recomendar.
+
+─────────────────────────────────────────
+3. APRESTO
+─────────────────────────────────────────
+
+[APRESTO CON AROMATIZANTE 2 EN 1 — Lirios & Ylang Ylang] V
+Formato: Doypack 500ml recarga.
+⚠️ NO es suavizante. No confundir. No reemplaza al suavizante.
+Diferencial: dos funciones en uno. Facilita el planchado (almidón líquido + silicona que hace deslizar la plancha) y perfuma la ropa al mismo tiempo.
+Fragancia: delicada fragancia floral de lirios con suaves notas frescas y elegantes. El aroma queda en la ropa después del planchado y se mantiene en el ropero.
+Modo de uso: cortar con tijera, verter en botella Apresto Spray. Rociar desde 30cm sobre la prenda. Dejar penetrar. Planchar.
+Para: ropa de algodón, lino, sintéticos y mezclas. Reduce arrugas y tiempo de planchado. Evita el brillado y daño térmico en telas delicadas.
 Composición: Agua, Fructosa cíclica, Surfactante no iónico, Ferma, Conservante y Secuestrante.
 EAN: 7798124362656
- 
-─── 4. LIMPIADORES DE SUPERFICIES ───
- 
-Modo de uso doypack recarga: agitar, cortar, desatornillar gatillo de botella, verter, ajustar gatillo. Aplicar, esperar, pasar paño.
- 
-[LIMPIADOR DE COCINA] V — Doypack 500ml recarga / Botella gatillo 500ml. Elimina grasa.
+
+─────────────────────────────────────────
+4. LIMPIADORES DE SUPERFICIES
+─────────────────────────────────────────
+
+Naming oficial: Limpiador de Cocina (= antigrasa) | Limpiador de Vidrios (= multiuso) | Limpiador de Baños.
+Modo de uso doypack recarga: agitar, cortar, desatornillar gatillo de botella, verter, ajustar gatillo. Aplicar, esperar unos minutos, pasar paño limpio o papel absorbente.
+⚠️ No transvasar a envases de alimentos/bebidas. Cuidado, peligrosa su ingestión. Evitar inhalación.
+Sistema recarga: en los 3 limpiadores y en Ultra Brillo, el doypack es la recarga económica del gatillo. Comprás el gatillo una vez y reponés con el doypack, generando menos plástico.
+
+[LIMPIADOR DE COCINA] V
+Formatos: Doypack 500ml (recarga económica) | Botella gatillo 500ml.
+Diferencial: fórmula desengrasante que actúa desde el primer contacto, sin necesidad de restregar. Acción inmediata.
+Para: mesadas, hornallas, azulejos, bachas, heladeras, acero inoxidable, cerámica, granito y superficies pintadas.
+Frases clave: "Elimina grasa acumulada y manchas de aceite en una sola aplicación." / "No requiere enjuague en la limpieza cotidiana."
 Composición: Tensioactivo Aniónico, Butilglicol, Agua, Tensioactivo No Iónico, Conservante, Esencia, Colorante, Coadyuvante.
-EAN Botella: 7798124364223
- 
-[LIMPIADOR DE VIDRIOS] V — Doypack 500ml recarga / Botella gatillo 500ml. Limpia sin dejar vetas.
+EAN Botella 500ml: 7798124364223
+
+[LIMPIADOR DE VIDRIOS] V
+Formatos: Doypack 500ml (recarga económica) | Botella gatillo 500ml.
+Diferencial: fórmula de secado rápido. Sin vetas, sin marcas de gotas, sin residuos. Fórmula antihuella: evita que se vuelvan a marcar rápidamente.
+Para: ventanas, espejos del baño, puertas de vidrio templado, parabrisas, plexiglás, superficies de aluminio.
 Composición: Diluyente Alcohólico, Tensioactivo No Iónico, Alcalinizante, Agua, Secuestrante, Esencia, Conservante, Butilglicol.
-EAN Botella: 7798124364230
- 
-[LIMPIADOR DE BAÑOS] V — Doypack 500ml.
+EAN Botella 500ml: 7798124364230
+
+[LIMPIADOR DE BAÑOS] V
+Formato: Doypack 500ml (recarga para botella con gatillo).
+Diferencial: fórmula específica para ambientes de baño. Elimina cal, jabón acumulado, sarro y manchas de humedad. Superficies brillantes en una sola aplicación.
+Para: inodoros, piletas, duchas, azulejos, juntas, lavatorios.
+Frase clave: "Con una sola aplicación el baño queda limpio, brillante y con frescura duradera."
 Composición: Agua, Tensioactivo Aniónico, Butilglicol, Tensioactivo No Iónico, Conservante, Regulador de pH y Esencia.
- 
-[ULTRA BRILLO MULTISUPERFICIES CÍTRICO] V — Doypack 380ml recarga / Botella gatillo 400ml.
-Superficies: cuero, madera, metal, acero inoxidable, plásticos, vidrio, bronce, aluminio, cobre, mármol, espejos, porcelanato, granito, vinilo y laminado. No deja residuos.
-Composición: Agua, siliceo, solvente, conservante, esencia y secuestrante.
-EAN Doypack: 7798124362625 | EAN Botella: 7798124364247
- 
-─── 5. LAVAVAJILLAS ───
- 
-[LAVAVAJILLAS NEUTRO] V — Botella 500ml. Fórmula con glicerina, surfactantes biodegradables, suave para manos. Origen Brasil.
-Modo de uso: aplicar sobre esponja con agua, refregar y enjuagar.
+
+[ULTRA BRILLO MULTISUPERFICIES CÍTRICO] V
+Formatos: Doypack 380ml recarga | Botella gatillo 400ml.
+Diferencial: un solo producto para todas las superficies del hogar. No abrasivo, no raya, no opaca, no deja residuos blancos. Deja una fina capa protectora que facilita la limpieza futura y prolonga la vida útil de los muebles.
+Para: cuero, madera, metal, acero inoxidable, plásticos, vidrio, bronce, aluminio, cobre, mármol, espejos, porcelanato, granito, vinilo y laminado.
+Fragancia: cítrica.
+Modo de uso: aplicar sobre paño suave o microfibra, distribuir y retirar con movimientos circulares. Para mayor brillo en materiales nobles, terminar con paño seco.
+Composición: Agua, siliceo, solvente, conservante, esencia, secuestrante. Contiene Isotiazolinonas.
+EAN Doypack: 7798124362625 | EAN Botella 400ml: 7798124364247
+
+─────────────────────────────────────────
+5. LAVAVAJILLAS
+─────────────────────────────────────────
+
+[LAVAVAJILLAS NEUTRO] V
+Formato: Botella 500ml. Origen Brasil.
+Diferencial: fórmula neutra con glicerina y surfactantes biodegradables. pH neutro: lava sin resecar la piel. Suave para manos sensibles.
+Frase clave: "Corta la grasa y elimina residuos de comida sin necesidad de remojar. La espuma se enjuaga fácilmente, sin residuos en vasos ni platos."
+Modo de uso: aplicar sobre esponja con agua, refregar y enjuagar. Superficies en contacto con alimentos: enjuagar con abundante agua potable.
 Composición: Agua, tensioactivos, glicerina, espesantes, secuestrante, conservante, fragancia, colorante.
 EAN: 7798124362663
- 
-[DETERGENTE ULTRA CONCENTRADO LIMÓN] V — Doypack 450ml. Ultra concentrado, rinde 3x más que lavavajillas Ecovita normal. Elimina toda la grasa.
-Instrucciones: cortar con tijera, verter en botella. Unas gotas sobre esponja y aplicar directamente.
+
+[DETERGENTE ULTRA CONCENTRADO LIMÓN] V
+Formato: Doypack 450ml. Se usa directo, sin diluir.
+Diferencial: ultra concentrado, rinde 3x más que un lavavajillas convencional. Una pequeña cantidad es suficiente. El doypack facilita la recarga en dispensadores de cocina.
+Fragancia cítrica: vibrantes notas de limón. También neutraliza olores de cocción impregnados en utensilios, tablas de cortar y recipientes plásticos.
+Instrucciones: cortar con tijera, verter en botella. Unas gotas sobre esponja, aplicar directamente.
 Composición: Agua, Tensioactivo aniónico, Esencia, Secuestrante, Colorantes, Conservante, Espesante.
 EAN: 7798124560805
- 
-[LAVAVAJILLAS SMART — Limón] V — Sachet 150ml → rinde 500ml. Sistema Smart. Elimina toda la grasa.
-Instrucciones: 1) Agregar 350ml agua al envase vacío. 2) Trasvasar sachet. 3) Cerrar y agitar. Dejar reposar.
- 
-─── 6. LÍNEA SMART — PISOS ───
- 
-Instrucciones dilución 27ml: llenar botella con 873ml agua potable, trasvasar sachet, cerrar y agitar.
+
+[LAVAVAJILLAS SMART — Limón] V
+Formato: Sachet 150ml → rinde 500ml. Sistema Smart.
+Diferencial: elimina toda la grasa. Cuida las manos. Espuma activa de enjuague fácil, sin residuos en vasos ni platos.
+Instrucciones: 1) Agregar 350ml agua al envase vacío. 2) Trasvasar sachet completo. 3) Cerrar y agitar. Dejar reposar. No lavar envase para próximas diluciones.
+Composición: Agua, Lauril Eter Sulfato de Sodio, Dodecil Bencen Sulfonato de Sodio, Coco Amido Propil Betaína, Óxido de Amina, Cloruro de Sodio, Colorantes, Esencia y Conservante.
+EAN sachet 150ml: EE-2025-10430190.
+
+─────────────────────────────────────────
+6. LÍNEA SMART — PISOS
+─────────────────────────────────────────
+
+Instrucciones dilución 27ml: llenar botella con 873ml agua potable, trasvasar sachet, cerrar y agitar. Dejar reposar 15 min.
 Instrucciones dilución 150ml: llenar bidón con 4850ml agua potable, trasvasar sachet, cerrar y agitar.
-Modo de uso: aplicar sobre superficie, pasar paño suave. No requiere enjuague.
- 
-[LAVANDA] V — Sachet 27ml / Sachet 150ml
-[COCO-VAINILLA] V — Sachet 27ml / Sachet 150ml
-[MARINA] P — Sachet 27ml / Sachet 150ml. EAN 27ml: 7798124364445 | EAN 150ml: 7798124364346
-[FLORAL] P — Sachet 27ml / Sachet 150ml
-[AMBER OUD #14 — Arabian Home Scents] P — Sachet 150ml → 5L. Pirámide: Azafrán / Ámbar / Maderas Suaves. EAN 150ml: 7798124364384
-[SANTAL NUIT #6 — Arabian Home Scents] P — Sachet 150ml → 5L. Pirámide: Especias Secas / Maderas Oscuras / Vetiver. EAN 150ml: 7798124364391
- 
-─── 7. COMPLEMENTOS ───
- 
+Modo de uso: aplicar sobre superficie, pasar paño suave hasta secar. No requiere enjuague. Usar guantes.
+Compatible con: cerámica, porcelanato, madera flotante y vinílico.
+Rendimiento sachet 27ml: 900ml (equivale a 1 botella convencional). Rendimiento sachet 150ml: 5L / 20 baldes.
+Composición pisos: Agua, Tensioactivo No Iónico, Tensioactivo Aniónico, Butilglicol, Conservante, Colorante, Regulador de Espuma, Fragancia.
+Elaborado pisos: Churruca 8301, Loma Hermosa (Marina, Amber Oud, Santal Nuit) | Oliveira César 1538, Villa Maipú (Lavanda, Coco-Vainilla).
+
+[LAVANDA] V — Sachet 27ml | Sachet 150ml
+Fragancia: aromática de lavanda con delicadas notas herbales y frescas. Sensación relajante y duradera de limpieza. La lavanda es la fragancia más elegida por los consumidores argentinos en limpiadores de pisos. El aroma permanece en el ambiente después del trapeado.
+
+[COCO-VAINILLA] V — Sachet 27ml | Sachet 150ml
+Fragancia: gourmand, cremosa, cálida y tropical. Combinación de coco cremoso y vainilla suave con delicados almizcles blancos. Sensación cálida, dulce y reconfortante. Sin residuos pegajosos.
+
+[MARINA] P — Sachet 27ml | Sachet 150ml
+Fragancia: marina con acordes acuáticos y brisa oceánica. Sensación limpia, fresca y revitalizante. El aroma se distribuye uniformemente en el ambiente después del trapeado.
+EAN 27ml: 7798124364445 | EAN 150ml: 7798124364346
+
+[FLORAL] P — Sachet 27ml | Sachet 150ml
+
+[AMBER OUD #14 — Arabian Home Scents] P — Sachet 150ml → 5L
+Línea Arabian Ecovita Smart. Fragancias inspiradas en el hogar árabe.
+Pirámide olfativa: salida Azafrán | corazón Ámbar | fondo Maderas Suaves.
+EAN 150ml: 7798124364384 | EAN envase rígido 5L: 7798124364407
+
+[SANTAL NUIT #6 — Arabian Home Scents] P — Sachet 150ml → 5L
+Línea Arabian Ecovita Smart. Fragancias inspiradas en el hogar árabe.
+Pirámide olfativa: salida Especias Secas | corazón Maderas Oscuras | fondo Vetiver.
+EAN 150ml: 7798124364391 | EAN envase rígido 5L: 7798124364414
+
+GUÍA DE FRAGANCIAS SMART PISOS:
+Lavanda → relajante, clásico hogar limpio, la más elegida.
+Coco-Vainilla → cálida, dulce, tropical.
+Marina → fresca, acuática, revitalizante.
+Floral → floral, primaveral (próximamente).
+Amber Oud #14 → sofisticada, especiada, ambarada (próximamente, línea premium).
+Santal Nuit #6 → oscura, amaderada, especias y vetiver (próximamente, línea premium).
+
+─────────────────────────────────────────
+7. COMPLEMENTOS
+─────────────────────────────────────────
+
+[APRESTO 2 EN 1 LIRIOS] V — ver sección 3
+
 [ESPONJA ECOVITA MULTIUSO] P
+Diferencial: combina cara suave y cara abrasiva. La cara suave limpia sin rayar cristalería, cerámica y utensilios delicados. La cara abrasiva elimina suciedad incrustada en ollas, hornallas y superficies resistentes. Durable, no suelta residuos. Complemento ideal de los productos Ecovita.
+
 [ESPONJA ECOVITA CON GUARDAÚÑAS] P
- 
-─── 8. REPELENTES GALAXIA ───
- 
-[ESPIRALES GALAXIA] V — x12 unidades. Uso interior. EAN: 7798124364209
-[TABLETAS GALAXIA] P — x12 unidades."""
- 
+Diferencial: diseño ergonómico que protege las uñas del contacto con superficies ásperas y productos de limpieza. Reduce la fatiga en la mano. Combina cara suave y cara abrasiva. Ideal para quienes limpian con frecuencia.
+
+─────────────────────────────────────────
+8. REPELENTES GALAXIA
+─────────────────────────────────────────
+
+Nota: la línea Galaxia es distribuida por Ecovita S.A.
+
+[ESPIRALES GALAXIA] V
+Formato: pack x12 unidades.
+Uso: exteriores o espacios abiertos y ventilados. Combustión lenta que libera activo repelente. Aleja mosquitos e insectos voladores. Duración: hasta 6 horas por espiral.
+Para: jardines, patios, terrazas, asados, reuniones al aire libre, acampadas, noches de verano.
+Modo de uso: colocar en soporte metálico a nivel del suelo, alejado de materiales inflamables. Encender hasta tener brasa estable.
+EAN: 7798124364209
+
+[TABLETAS GALAXIA] P
+Formato: pack x12 unidades. Para uso con dispositivos eléctricos.
+Diferencial: protección nocturna en espacios cerrados de hasta 20m². Sin humo, sin llama, sin olores fuertes. Silenciosas.
+Compatible con la mayoría de los dispositivos eléctricos del mercado.
+
+─────────────────────────────────────────
+TABLA DE ASESORAMIENTO RÁPIDO
+─────────────────────────────────────────
+
+¿Qué busca el cliente? → Producto recomendado
+
+Lavado diario, cualquier ropa → Evolution (doypack o botella)
+Más fragancia en la ropa → Intense o cualquier suavizante
+Lavarropas automático, baja espuma → Evolution o Intense
+Quiere limpiar y suavizar en un paso → Jabón con Toque de Suavizante
+Ropa de bebé o piel sensible → Línea Baby Care (jabón + suavizante)
+Fragancia premium, perfumería fina → Épico o Único (doypack o concentrado)
+Fragancia floral elegante → Lirios & Ylang Ylang u Orquídeas & Muguet
+Fragancia floral fresca → Flores Silvestres
+Suavizante más económico → Intense Clásico o Lirios 3L
+Natural, vegano, eco → BIO (próximamente)
+Máximo ahorro, menos plástico → Línea Smart (pisos, jabón, lavavajillas, suavizante)
+Planchar mejor → Apresto 2 en 1 Lirios
+Limpiar cocina/grasa → Limpiador de Cocina (doypack o gatillo)
+Limpiar vidrios sin vetas → Limpiador de Vidrios (doypack o gatillo)
+Limpiar baño → Limpiador de Baños
+Muebles, madera, cuero → Ultra Brillo Multisuperficies
+Pisos, fragancia relajante → Smart Lavanda
+Pisos, fragancia dulce → Smart Coco-Vainilla
+Pisos, fragancia fresca → Smart Marina
+Pisos, fragancia sofisticada/premium → Amber Oud o Santal Nuit
+Vajilla, manos sensibles → Lavavajillas Neutro
+Vajilla, máximo rendimiento → Detergente Ultra Concentrado Limón
+Mosquitos exterior → Espirales Galaxia
+Mosquitos interior noche → Tabletas Galaxia
+
+─────────────────────────────────────────
+FAQ AMPLIADO
+─────────────────────────────────────────
+
+¿Cuántos lavados rinde?
+Evolution/Intense 800ml → 8 lavados. 3L → 30 lavados. Botella 1,5L → 15 lavados.
+Sport/Baby Care 800ml → 8 lavados. BIO 800ml → 8 lavados.
+Power Care 500ml → 30 lavados (diluido en 3L). Smart jabón 135ml → 8 lavados.
+
+¿Cuál es la diferencia entre Evolution e Intense?
+Misma calidad de limpieza, misma duración de fragancia, misma baja espuma. La fragancia es distinta (Evolution: floral frutal / Intense: floral dulce frutal). Intense tiene tecnología alemana de neutralización de olores. Evolution viene en botella reutilizable recargable, Intense solo en doypack.
+
+¿Épico y Único son iguales?
+No. Misma tecnología Parfum Edition (microcápsulas suizas + óleo de argán), distinta fragancia. Épico: floral blanco, elegante, fresco. Único: floral empolvado, dulce, cálido. Ambos en doypack 900ml y botella concentrada 500ml.
+
+¿El concentrado de Épico/Único rinde más?
+Sí. La botella 500ml con 22,5ml por lavado rinde 22 lavados. Mejor precio por lavado que el doypack.
+
+¿Baby Care sirve para toda la familia?
+Sí. Hipoalergénico, sin colorantes ni enzimas. Ideal para bebés, piel sensible, ropa interior y prendas delicadas de toda la familia.
+
+¿Cómo funciona la línea Smart?
+Sachets concentrados que se diluyen con agua en casa. 80% de ahorro, 96% menos plástico, 5x más perfume. Disponibles para pisos, jabón para ropa, lavavajillas y (próximamente) suavizante.
+
+¿El doypack de limpiadores se usa solo o con botella?
+El doypack es la recarga del gatillo. Comprás el gatillo una vez, y cuando se termina, recargás con el doypack y seguís usando el mismo gatillo.
+
+¿El Apresto reemplaza al suavizante?
+No. Son productos distintos. El apresto facilita el planchado y perfuma. No suaviza la ropa ni reemplaza al suavizante.
+
+¿El BIO y el Sport están disponibles?
+BIO está próximo a lanzarse. Sport está discontinuado.
+
+¿Dónde se consiguen los productos?
+Supermercados: Carrefour, Coto, Changomás, La Anónima, Jumbo, VEA, Disco, Libertad, DIA.
+Online: PedidosYa, Mercado Libre, Rappi.
+Línea Smart/Ecosmart por bulto: tienda Ecosmart (Tienda Nube), disponible final de Julio 2026.
+Consultas mayoristas: ventas@ecovita.com.ar | 
  
 SYSTEM_PROMPT_LEADS = """Sos Leo, el asistente comercial de Laboratorios Ecovita S.A. Tu misión es recolectar los datos de potenciales distribuidores, mayoristas y comercios que quieren vender productos Ecovita.
  
