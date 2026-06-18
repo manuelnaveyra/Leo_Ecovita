@@ -137,7 +137,6 @@ async def guardar_log(contact_id: str, agente: str, mensaje: str, respuesta: str
 # CLAUDE
 # ─────────────────────────────────────────────
  
-Acá está, listo para pegar:
 pythonasync def llamar_claude(system_prompt: str, mensajes: list, max_tokens: int = 700) -> str:
     for intento in range(3):
         async with httpx.AsyncClient(timeout=60) as client:
