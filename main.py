@@ -137,26 +137,33 @@ async def guardar_log(contact_id: str, agente: str, mensaje: str, respuesta: str
 # CLAUDE
 # ─────────────────────────────────────────────
  
-async def llamar_claude(system_prompt: str, mensajes: list, max_tokens: int = 700) -> str:
-    async with httpx.AsyncClient(timeout=60) as client:
-        r = await client.post(
-            "https://api.anthropic.com/v1/messages",
-            headers={
-                "x-api-key": ANTHROPIC_KEY,
-                "anthropic-version": "2023-06-01",
-                "Content-Type": "application/json"
-            },
-            json={
-                "model": "claude-haiku-4-5",
-                "max_tokens": max_tokens,
-                "system": system_prompt,
-                "messages": mensajes
-            }
-        )
-        data = r.json()
-        if "content" not in data:
+Acá está, listo para pegar:
+pythonasync def llamar_claude(system_prompt: str, mensajes: list, max_tokens: int = 700) -> str:
+    for intento in range(3):
+        async with httpx.AsyncClient(timeout=60) as client:
+            r = await client.post(
+                "https://api.anthropic.com/v1/messages",
+                headers={
+                    "x-api-key": ANTHROPIC_KEY,
+                    "anthropic-version": "2023-06-01",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": "claude-haiku-4-5",
+                    "max_tokens": max_tokens,
+                    "system": system_prompt,
+                    "messages": mensajes
+                }
+            )
+            data = r.json()
+            if "content" in data:
+                return data["content"][0]["text"]
+            print(f"[llamar_claude] intento {intento+1} status={r.status_code} respuesta={data}")
+            if r.status_code in (429, 529, 500, 503):
+                await asyncio.sleep(2 * (intento + 1))
+                continue
             return None
-        return data["content"][0]["text"]
+    return None
  
  
 def _extraer_json(raw: str):
