@@ -766,7 +766,7 @@ BIO está próximo a lanzarse. Sport está discontinuado.
 Supermercados: Carrefour, Coto, Changomás, La Anónima, Jumbo, VEA, Disco, Libertad, DIA.
 Online: PedidosYa, Mercado Libre, Rappi.
 Línea Smart/Ecosmart por bulto: tienda Ecosmart (Tienda Nube), disponible final de Julio 2026.
-Consultas mayoristas: ventas@ecovita.com.ar | 
+Consultas mayoristas: ventas@ecovita.com.ar """
  
 SYSTEM_PROMPT_LEADS = """Sos Leo, el asistente comercial de Laboratorios Ecovita S.A. Tu misión es recolectar los datos de potenciales distribuidores, mayoristas y comercios que quieren vender productos Ecovita.
  
