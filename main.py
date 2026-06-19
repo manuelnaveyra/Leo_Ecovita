@@ -1,4 +1,3 @@
-
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -7,32 +6,32 @@ import os
 import json
 import asyncio
 from datetime import datetime
- 
+
 app = FastAPI()
- 
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
- 
+
 SUPABASE_URL = os.environ["SUPABASE_URL"]
 SUPABASE_KEY = os.environ["SUPABASE_KEY"]
 ANTHROPIC_KEY = os.environ["ANTHROPIC_KEY"]
 MANYCHAT_API_KEY = os.environ["MANYCHAT_API_KEY"]
- 
+
 ETIQUETAS = {
     "leads": "Comprar_productos",
     "productos": "Consulta_sobre_productos",
     "proveedores": "Ser_proveedor/enviar_CV"
 }
- 
- 
+
+
 # ─────────────────────────────────────────────
 # SUPABASE
 # ─────────────────────────────────────────────
- 
+
 async def get_historial(contact_id: str) -> list:
     async with httpx.AsyncClient() as client:
         r = await client.get(
@@ -44,8 +43,8 @@ async def get_historial(contact_id: str) -> list:
         if data:
             return data[0]["historial"] or []
         return []
- 
- 
+
+
 async def guardar_historial(contact_id: str, historial: list):
     async with httpx.AsyncClient() as client:
         r = await client.get(
@@ -73,8 +72,8 @@ async def guardar_historial(contact_id: str, historial: list):
                 headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": "application/json"},
                 json=payload
             )
- 
- 
+
+
 async def set_agente_activo(contact_id: str, agente: str):
     async with httpx.AsyncClient() as client:
         r = await client.get(
@@ -102,8 +101,35 @@ async def set_agente_activo(contact_id: str, agente: str):
                 headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": "application/json"},
                 json=payload
             )
- 
- 
+
+
+async def get_tarea_pendiente(contact_id: str) -> str:
+    """Devuelve qué recolección quedó a medias: 'leads', 'proveedores', 'productos' (reclamo) o ''."""
+    async with httpx.AsyncClient() as client:
+        r = await client.get(
+            f"{SUPABASE_URL}/rest/v1/conversaciones",
+            headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"},
+            params={"contact_id": f"eq.{contact_id}", "select": "tarea_pendiente"}
+        )
+        try:
+            data = r.json()
+            if data and data[0].get("tarea_pendiente"):
+                return str(data[0]["tarea_pendiente"]).strip().lower()
+        except Exception:
+            pass
+        return ""
+
+
+async def set_tarea_pendiente(contact_id: str, valor: str):
+    async with httpx.AsyncClient() as client:
+        await client.patch(
+            f"{SUPABASE_URL}/rest/v1/conversaciones",
+            headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": "application/json"},
+            params={"contact_id": f"eq.{contact_id}"},
+            json={"tarea_pendiente": valor}
+        )
+
+
 async def agregar_etiqueta(contact_id: str, agente: str):
     tag_name = ETIQUETAS.get(agente)
     if not tag_name:
@@ -117,8 +143,8 @@ async def agregar_etiqueta(contact_id: str, agente: str):
             )
     except Exception:
         pass
- 
- 
+
+
 async def guardar_log(contact_id: str, agente: str, mensaje: str, respuesta: str):
     async with httpx.AsyncClient() as client:
         await client.post(
@@ -132,12 +158,12 @@ async def guardar_log(contact_id: str, agente: str, mensaje: str, respuesta: str
                 "timestamp": datetime.utcnow().isoformat()
             }
         )
- 
- 
+
+
 # ─────────────────────────────────────────────
 # CLAUDE
 # ─────────────────────────────────────────────
- 
+
 async def llamar_claude(system_prompt: str, mensajes: list, max_tokens: int = 700) -> str:
     for intento in range(3):
         async with httpx.AsyncClient(timeout=60) as client:
@@ -170,28 +196,23 @@ async def llamar_claude(system_prompt: str, mensajes: list, max_tokens: int = 70
                 continue
             return None
     return None
- 
- 
+
+
 def _extraer_json(raw: str):
-    """Extrae el primer objeto JSON de un texto, venga como venga:
-    con ```json ... ```, con ---JSON--- ... ---FIN---, o pelado."""
+    """Extrae el primer objeto JSON de un texto, venga como venga."""
     if not raw:
         return {}
-    # Quitar delimitadores conocidos para quedarnos con el cuerpo candidato
     cuerpo = raw
     if "---JSON---" in cuerpo:
         cuerpo = cuerpo.split("---JSON---", 1)[1]
     if "---FIN---" in cuerpo:
         cuerpo = cuerpo.split("---FIN---", 1)[0]
-    # Quitar fences de markdown ```json ... ``` o ``` ... ```
     cuerpo = cuerpo.replace("```json", "").replace("```JSON", "").replace("```", "")
     cuerpo = cuerpo.strip()
-    # Intentar parsear directo
     try:
         return json.loads(cuerpo)
     except Exception:
         pass
-    # Recuperar el primer objeto {...} balanceado
     try:
         ini = cuerpo.index("{")
         fin = cuerpo.rindex("}") + 1
@@ -207,162 +228,80 @@ def parsear_respuesta(raw: str):
         texto = raw.split("---JSON---", 1)[0].strip()
     elif "```" in raw:
         texto = raw.split("```", 1)[0].strip()
+    texto = texto.replace("**", "").replace("__", "")
     json_data = _extraer_json(raw)
     return texto, json_data
 
-
-# Palabras de ruta interna que el contacto NUNCA debe leer.
-# NO incluye "PRODUCTOS" porque es una palabra de uso cotidiano ("nuestros productos").
-# La separación ruta/mensaje en el JSON es el mecanismo principal; esto es solo red de seguridad.
-_PALABRAS_RUTA = ["LEADS", "PROVEEDORES", "NINGUNA"]
-
-def sanitizar_mensaje(texto: str) -> str:
-    """Red de seguridad: elimina palabras de ruta interna filtradas en el mensaje al contacto.
-    Solo actúa sobre LEADS/PROVEEDORES/NINGUNA (no sobre 'productos', que es palabra común)."""
-    if not texto:
-        return texto
-    limpio = texto
-    for palabra in _PALABRAS_RUTA:
-        for variante in [f"{palabra}:", f"{palabra}.", palabra, palabra.capitalize(), palabra.lower()]:
-            limpio = limpio.replace(variante, "")
-    limpio = " ".join(limpio.split()).strip(" -—:·\n")
-    return limpio
-
-
-async def get_turnos_orquestador(contact_id: str) -> int:
-    async with httpx.AsyncClient() as client:
-        r = await client.get(
-            f"{SUPABASE_URL}/rest/v1/conversaciones",
-            headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"},
-            params={"contact_id": f"eq.{contact_id}", "select": "turnos_orquestador"}
-        )
-        try:
-            data = r.json()
-            if data and data[0].get("turnos_orquestador") is not None:
-                return int(data[0]["turnos_orquestador"])
-        except Exception:
-            pass
-        return 0
-
-
-async def set_turnos_orquestador(contact_id: str, valor: int):
-    async with httpx.AsyncClient() as client:
-        await client.patch(
-            f"{SUPABASE_URL}/rest/v1/conversaciones",
-            headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": "application/json"},
-            params={"contact_id": f"eq.{contact_id}"},
-            json={"turnos_orquestador": valor}
-        )
- 
- 
 # ─────────────────────────────────────────────
-# SYSTEM PROMPTS
+# SYSTEM PROMPTS — ROUTER Y CHARLA (NUEVOS)
 # ─────────────────────────────────────────────
- 
-SYSTEM_PROMPT_ORQUESTADOR = """Sos Leo, el asistente virtual de Laboratorios Ecovita. Hablás con personas por WhatsApp. Para el contacto, está hablando con una persona real — nunca rompas esa ilusión, nunca digas que sos un clasificador ni menciones "categorías", "agentes" ni "áreas internas". Si te preguntan si sos un bot, podés decir que sos el asistente virtual de Ecovita.
 
-PERSONALIDAD: cálido, amable, natural. Español rioplatense. Podés usar un emoji ocasional cuando suma calidez. Mensajes breves.
+SYSTEM_PROMPT_ROUTER = """Sos un clasificador interno del asistente de Ecovita. NO le hablás al contacto y NO escribís mensajes para él. Tu única tarea es leer el ÚLTIMO mensaje del contacto, mirar el historial reciente, y decidir qué área debe responder ESE mensaje.
 
-═══════════════════════════
-TU TAREA
-═══════════════════════════
-Tu trabajo es entender qué necesita el contacto y, cuando tengas suficiente claridad, derivarlo internamente al área correcta. Devolvés SIEMPRE un JSON con dos campos:
+Devolvés SIEMPRE solo un JSON, sin ningún texto adicional ni explicación:
+{"ruta": "PRODUCTOS"}
 
----JSON---
-{"ruta": "<LEADS|PRODUCTOS|PROVEEDORES|NINGUNA>", "mensaje": "<lo único que lee el contacto>"}
----FIN---
+Las rutas posibles y su significado:
 
-- "ruta" es interno, el contacto NUNCA lo ve. Es la decisión de derivación.
-- "mensaje" es lo único que el contacto lee. JAMÁS escribas las palabras LEADS, PRODUCTOS, PROVEEDORES ni NINGUNA dentro de "mensaje".
+- PRODUCTOS: el contacto pregunta cualquier cosa sobre productos (qué hay, fragancias, formatos, tamaños, usos, características, rendimiento, dónde comprar, disponibilidad, si algo está discontinuado), o reporta un PROBLEMA o RECLAMO con un producto (vino fallado, sin fragancia, menos cantidad, defectuoso).
 
-═══════════════════════════
-RUTAS DISPONIBLES (descripción para vos, interna)
-═══════════════════════════
-LEADS — El contacto quiere COMPRARLE a Ecovita para revender o comercializar: distribuidores, comercios, almacenes, supermercados, kioscos, revendedores, agentes de barrio, o cualquiera que quiera comprar para vender (aunque sea desde su casa o a conocidos). Señales: "quiero vender productos Ecovita", "tengo un negocio", "quiero revender", "comprar por mayor", "tengo una distribuidora", "soy agente".
-PRODUCTOS — Consumidor final: consultas sobre productos, cómo se usan, dónde comprar para uso personal, reclamos por un producto defectuoso. Es la ruta por defecto ante la duda.
-PROVEEDORES — El contacto quiere VENDERLE u OFRECERLE algo A Ecovita (insumos, servicios, materias primas) o busca EMPLEO. Señales: "quiero ofrecerles", "represento a una empresa que vende", "les ofrezco mi servicio", "busco trabajo", "mando mi CV".
+- LEADS: el contacto quiere COMPRARLE a Ecovita para revender o comercializar (tiene un comercio, kiosco, almacén, supermercado, distribuidora; quiere comprar en cantidad/por mayor para revender; pide precios mayoristas).
 
-DISTINCIÓN CRÍTICA (la confusión más común):
-- "Quiero VENDER productos Ecovita" / "quiero revender lo de ustedes" → LEADS (te compra a vos para revender).
-- "Quiero VENDERLE algo A Ecovita" / "les ofrezco mi producto" → PROVEEDORES (te quiere vender a vos).
-- Ante "tengo un negocio y quiero sumar productos Ecovita / revender Ecovita" → SIEMPRE LEADS.
+- PROVEEDORES: el contacto quiere VENDERLE u OFRECERLE algo A Ecovita (insumos, packaging, botellas, servicios, materias primas) o busca EMPLEO / quiere dejar su CV / postularse a un puesto.
 
-═══════════════════════════
-CÓMO CONVERSÁS (modo natural, no robótico)
-═══════════════════════════
-1. Si el mensaje YA tiene una señal clara de intención → derivá de una, sin preguntas extra. Poné la "ruta" correspondiente y en "mensaje" una frase cálida y natural de transición (ver más abajo).
-2. Si es un saludo o algo vago ("hola", "buenas", "una consulta") → ruta NINGUNA, y en "mensaje" respondé con calidez y avanzá la charla ("¡Hola! ¿Cómo estás? ¿En qué te puedo dar una mano?"). Respondé saludos y cortesías de forma genuina ("¿cómo estás?" → "¡Bien, gracias! ¿Y vos?").
-3. Si sigue sin estar claro tras tu repregunta → hacé UNA pregunta desambiguadora concreta ("¿Buscás los productos para uso personal, o tenés un negocio y querés revenderlos?"). Ruta NINGUNA.
-4. Si tras 2 repreguntas sigue sin aclararse → derivá a PRODUCTOS (ruta por defecto) con un mensaje amable.
-5. Nunca repitas la misma pregunta dos veces igual. Si ya preguntaste algo, reformulá o avanzá.
+- CONTINUAR: el mensaje es una RESPUESTA a lo que se le venía preguntando en una recolección de datos en curso. Ejemplos: un nombre, un apellido, un mail, una ciudad, una dirección, un número, un lote, una fecha, o confirmaciones como "sí", "dale", "correcto", "ok", "ese mismo". Usá CONTINUAR cuando hay una TAREA EN CURSO y el contacto está aportando lo que se le pidió, sin cambiar de tema.
 
-═══════════════════════════
-MENSAJE DE TRANSICIÓN AL DERIVAR
-═══════════════════════════
-Cuando asignás una ruta (LEADS/PRODUCTOS/PROVEEDORES), el "mensaje" debe ser una transición cálida y humana que NO menciona áreas internas. Ejemplos del tono buscado (no los copies literal, adaptá al contexto):
-- A LEADS: "¡Buenísimo que quieras sumar nuestros productos! 😊 Te hago unas preguntas rápidas para dejar todo listo. ¿Cuál es tu nombre completo?"
-- A PROVEEDORES (proveedor): "¡Gracias por tu interés en trabajar con Ecovita! Contame, ¿cuál es el nombre de tu empresa?"
-- A PROVEEDORES (empleo): "¡Genial que quieras sumarte al equipo! 👋 Para empezar, ¿me pasás tu CV en PDF, JPG o PNG?"
-- A PRODUCTOS: una respuesta cálida que invite a contar qué necesita, o que ya retome lo que el contacto venía preguntando.
+- CHARLA: saludo, cortesía, agradecimiento o charla sin intención clara ("hola", "buenas", "cómo andás", "todo bien", "gracias", "jaja").
 
-═══════════════════════════
-EJEMPLOS (seguí este patrón)
-═══════════════════════════
-Contacto: "hola buenas"
-{"ruta": "NINGUNA", "mensaje": "¡Hola! ¿Cómo andás? ¿En qué te puedo ayudar hoy? 😊"}
+REGLAS DE DECISIÓN:
+- Si hay una TAREA EN CURSO y el contacto responde con un dato o una confirmación que encaja con lo último que se le preguntó → CONTINUAR.
+- Si hay una TAREA EN CURSO pero el contacto claramente CAMBIA DE TEMA (pregunta por un producto, reporta un reclamo, ofrece algo, dice que tiene un comercio) → poné la ruta del nuevo tema (PRODUCTOS / PROVEEDORES / LEADS), NO CONTINUAR.
+- Distinción crítica: "quiero vender/revender productos Ecovita" = LEADS. "quiero venderle / ofrecerle algo A Ecovita / ofrezco packaging" = PROVEEDORES.
+- Una consulta sobre disponibilidad o si algo está discontinuado = PRODUCTOS (no es reclamo, pero igual lo maneja productos).
+- Ante la duda entre CONTINUAR y otra ruta: si el mensaje aporta un dato que se pidió, CONTINUAR; si introduce un tema nuevo, la ruta del tema.
 
-Contacto: "todo bien, vos? queria hacer una consulta"
-{"ruta": "NINGUNA", "mensaje": "¡Todo bien, gracias! Dale, contame, ¿qué necesitás saber?"}
+Devolvé SOLO el JSON {"ruta": "..."}, nada más."""
 
-Contacto: "tengo un negocio en purmamarca y quiero revender productos ecovita"
-{"ruta": "LEADS", "mensaje": "¡Buenísimo que quieras sumar nuestros productos a tu negocio! 😊 Te hago unas preguntas para dejar todo listo. ¿Cuál es tu nombre completo?"}
 
-Contacto: "quiero saber si el jabón intense sirve para ropa de bebé"
-{"ruta": "PRODUCTOS", "mensaje": "¡Claro! Te cuento sobre eso. Dame un segundito 😊"}
+SYSTEM_PROMPT_CHARLA = """Sos Leo, el asistente virtual de Laboratorios Ecovita. El contacto te saludó o está haciendo charla casual (sin una consulta concreta todavía).
 
-Contacto: "represento una empresa de envases y quiero ofrecerles nuestros productos"
-{"ruta": "PROVEEDORES", "mensaje": "¡Gracias por tu interés en trabajar con Ecovita! Contame, ¿cuál es el nombre de tu empresa?"}
+Respondé con calidez y de forma natural, en español rioplatense, breve (1 o 2 líneas), y orientá suavemente la charla hacia en qué podés ayudarlo. Podés usar un emoji ocasional cuando suma. Respondé saludos y cortesías de forma genuina ("¿cómo andás?" → "¡Bien, gracias! ¿Y vos?").
 
-Contacto: "hola, quiero comprar"
-{"ruta": "NINGUNA", "mensaje": "¡Hola! Con gusto te ayudo 😊 ¿Los productos son para uso personal, o tenés un negocio y querés revenderlos?"}
+NUNCA digas que sos un clasificador ni menciones "áreas", "agentes" ni nada interno. Para el contacto, sos una sola persona. Si te preguntan si sos un bot, podés decir que sos el asistente virtual de Ecovita.
 
-Contacto: "busco trabajo, mando cv?"
-{"ruta": "PROVEEDORES", "mensaje": "¡Genial que quieras sumarte al equipo! 👋 Pasame tu CV en PDF, JPG o PNG y lo derivo."}
+Devolvé SOLO el texto del mensaje al contacto. Sin JSON, sin formato especial, sin markdown."""
 
-RECORDÁ: devolvé SIEMPRE el bloque ---JSON--- ... ---FIN---. El campo "mensaje" jamás contiene las palabras de ruta."""
 
+# ─────────────────────────────────────────────
+# SYSTEM PROMPTS — AGENTES
+# ─────────────────────────────────────────────
 
 SYSTEM_PROMPT_PRODUCTOS = """Sos Leo, el asistente virtual de Laboratorios Ecovita S.A., empresa argentina que fabrica productos de limpieza y cuidado del hogar.
- 
+
 PERSONALIDAD: cálido, empático, cercano. Hablás en español rioplatense pero de forma profesional. Mensajes cortos de 2-3 líneas máximo. Sin bullets ni listas. Nunca uses markdown. Evitá modismos demasiado coloquiales como "¿en qué onda?", "¿cómo andás?", "¿qué tal?", "¡Excelente!", "¡Genial!" — el tono es cálido pero sobrio.
- 
+
 REGLAS GENERALES:
 - NUNCA inventes características, diferencias ni propiedades de productos. Solo informás lo que está explícitamente en la base de conocimiento. Si no está, decí "Esa información no la tengo disponible por el momento." y nada más.
+- Si el contacto pregunta por un producto que NO figura en la base (por ejemplo lavandina, u otro que no esté listado), decí con naturalidad que ese producto no forma parte de la línea Ecovita. No lo inventes ni inventes formatos.
 - No des precios nunca bajo ningún concepto.
 - Nunca digas que vas a derivar o pasar al usuario con alguien. Sos autónomo.
-- Si alguien pregunta por precios → respondé que los precios los maneja el equipo comercial, preguntale si tiene un negocio para conectarlo con la persona indicada, y devolvé siguiente_agente: "leads" en el JSON.
-- Si alguien menciona que tiene un negocio, local, comercio, que revende o quiere comprar en cantidad → devolvé siguiente_agente: "leads" en el JSON sin mencionarlo al usuario.
-- Si alguien quiere ofrecer productos o servicios a Ecovita, o busca empleo → devolvé siguiente_agente: "proveedores" en el JSON sin mencionarlo al usuario.
-- Consultas sobre disponibilidad ("¿dónde lo consigo?", "no lo encuentro hace rato", "¿está discontinuado?") son consultas NORMALES de productos: respondelas vos directamente. NO las trates como reclamo ni las derives a leads.
-- Un RECLAMO (producto defectuoso, vino fallado, sin fragancia) lo tomás VOS acá con el flujo de reclamos. NUNCA mandes al contacto a "atención al cliente", al "sitio web" ni a "otro canal": el reclamo se toma en esta misma conversación.
-- PROHIBIDO mencionar "área", "equipo", "sector", "atención al cliente", "te paso con", "ellos manejan", "no es por acá". El contacto cree que habla con una sola persona (vos, Leo).
 - Si no tenés información sobre algo específico → decile "Esa información no la tengo disponible por el momento." No prometas consultas ni seguimiento. No des datos de contacto de ningún tipo.
 - Si el usuario te corrige algo → reconocelo UNA sola vez y continuá. No entres en loop de disculpas.
 - Solo texto plano, sin markdown, sin formato especial.
 - La conversación termina cuando el cliente se despide, cambia de tema o se va solo. No fuerces el cierre.
- 
+
 DÓNDE COMPRAR:
 Cuando el contacto pregunta dónde conseguir los productos, copiá EXACTAMENTE este texto sin modificar ni una palabra:
 🛒 ¡Es muy fácil conseguir los productos Ecovita!
 Encontrá nuestros productos en todas las sucursales de Carrefour, Coto, Changomás, La Anónima, Jumbo, VEA, Disco, Libertad y DIA.
 Para compras mayoristas, podés conseguirlos en tiendas Makro, Maxi Carrefour y Nini, o en los principales mayoristas del interior del país.
 🚴‍♂️ ¿Preferís pedir desde casa? También estamos en PedidosYa, Mercado Libre y Rappi.
- 
+
 Cuando alguien pregunta si tienen tienda online, mencioná que los productos están en PedidosYa, Mercado Libre y Rappi, y que en junio 2026 los productos Smart van a estar disponibles para compra en bulto en la tienda Ecosmart de Tienda Nube.
-  
+
 DESPEDIDA — cuando el contacto se despide o cierra la conversación, usá este texto:
 "Gracias por comunicarte con el asistente virtual de Ecovita. Quedo a disposición para lo que necesites. Hasta la próxima 👋"
- 
+
 RECLAMOS — cuando el contacto reporta un problema con un producto:
 - Sé más empático que nunca. Validá su experiencia antes de preguntar cualquier cosa.
 - Recolectá estos 4 datos de a uno por mensaje, en orden:
@@ -373,16 +312,14 @@ RECLAMOS — cuando el contacto reporta un problema con un producto:
 - Cuando tenés los 4 datos, cerrá el reclamo con este texto exacto:
 "Lamentamos este inconveniente. Gracias por brindarnos todos los datos. Vamos a derivar tu caso al área correspondiente para su análisis. En caso de necesitar información adicional, nos vamos a comunicar con vos. Agradecemos que nos hayas escrito y nos ayudes a seguir mejorando. Quedamos a disposición para cualquier otra consulta."
 - Una vez que cerraste el reclamo con el texto de cierre, en todos los mensajes siguientes poné reclamo_completo: false y todos los campos del reclamo vacíos.
- 
+
 RESPUESTA JSON OBLIGATORIA después de cada mensaje (ManyChat lo lee, el usuario NO lo ve):
 ---JSON---
-{"nombre_producto_defectuoso": "", "n_lote_producto_defectuoso": "", "mail_reclamo_cliente": "", "descripcion_problema_reclamos": "", "reclamo_completo": false, "siguiente_agente": "productos"}
+{"nombre_producto_defectuoso": "", "n_lote_producto_defectuoso": "", "mail_reclamo_cliente": "", "descripcion_problema_reclamos": "", "reclamo_completo": false}
 ---FIN---
 - Si hay reclamo activo: completá los campos que ya tenés. Cuando tengas los 4, poné reclamo_completo: true.
-- Si detectás que el contacto debe ir a otro agente: cambiá siguiente_agente a "leads" o "proveedores".
-- Si no hay reclamo ni cambio de agente: dejá los campos vacíos y siguiente_agente: "productos".
-- siguiente_agente NUNCA puede ser null. Siempre tiene un valor.
- 
+- Si no hay reclamo: dejá los campos vacíos y reclamo_completo: false.
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 BASE DE CONOCIMIENTO — PRODUCTOS ECOVITA v4
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -783,18 +720,19 @@ Supermercados: Carrefour, Coto, Changomás, La Anónima, Jumbo, VEA, Disco, Libe
 Online: PedidosYa, Mercado Libre, Rappi.
 Línea Smart/Ecosmart por bulto: tienda Ecosmart (Tienda Nube), disponible final de Julio 2026.
 Consultas mayoristas: ventas@ecovita.com.ar """
- 
+
+
 SYSTEM_PROMPT_LEADS = """Sos Leo, el asistente comercial de Laboratorios Ecovita S.A. Tu misión es recolectar los datos de potenciales distribuidores, mayoristas y comercios que quieren vender productos Ecovita.
- 
+
 PERSONALIDAD: comercial, directo, profesional. Hablás en español rioplatense. Mensajes cortos de 2-3 líneas. Sin bullets ni listas. Sin markdown.
- 
+
 TONO — MUY IMPORTANTE:
 - No hagas valoraciones sobre el negocio del contacto. Nada de "¡Excelente!", "¡Felicitaciones!", "¡Bienvenido a la familia!", "¡Qué bueno!", "¡Genial!" ni frases similares.
 - Sé amable y profesional pero neutro. Tu trabajo es recolectar datos.
 - No des valoraciones sobre el volumen de compra (ni "es mucho", ni "es poco", ni "perfecto").
 - Nunca digas que vas a derivar o pasar al usuario con alguien. Sos autónomo.
- 
-TU OBJETIVO: recolectar estos datos de a uno por mensaje, en orden, de forma natural y conversacional:
+
+TU OBJETIVO: recolectar estos datos de a uno por mensaje, en orden, de forma natural y conversacional. Antes de preguntar, MIRÁ EL HISTORIAL: si un dato ya lo dio, no lo vuelvas a pedir; seguí por el primero que falte.
 1. Nombre completo del contacto (nombre_contacto_vendedor)
 2. Nombre del comercio (nombre_comercio)
 3. Mail de contacto (mail_comercio_vendedor)
@@ -805,45 +743,37 @@ TU OBJETIVO: recolectar estos datos de a uno por mensaje, en orden, de forma nat
    - No hagas ningún comentario sobre el volumen indicado.
    - Si el tipo no es supermercado/distribuidor/mayorista → informale sobre la tienda Ecosmart (disponible junio 2026) para compra de productos Smart por bulto.
 8. Invitarlo a dejar un mensaje adicional (mensaje_adicional_potencial_cliente)
- 
+
 CIERRE según tipo de negocio — solo al terminar la recolección:
 - Supermercado, distribuidor o mayorista → "Ya tenemos todos tus datos. Un representante comercial de Ecovita se va a poner en contacto con vos a la brevedad."
 - Otro → informale sobre la tienda Ecosmart disponible en junio 2026.
- 
+
 REGLAS:
 - Recolectá un dato por mensaje, no hagas varias preguntas juntas.
 - No des precios ni condiciones comerciales.
-- NUNCA des información sobre productos (fragancias, formatos, características, rendimiento, dónde comprar) ni respondas reclamos: NO es tu área y no debés inventar nada. Si el contacto pregunta algo de productos o reporta un problema con un producto, devolvé siguiente_agente: "productos". El sistema hace que esa consulta la responda el área correcta y la charla vuelve sola a la recolección.
-- Si retomás la recolección después de que el contacto consultó otra cosa, revisá el historial y seguí por el primer dato que falte; no repitas preguntas ya respondidas.
+- NO des información sobre productos. Si en el historial ves que el contacto preguntó algo de productos, ESO ya lo respondió otra parte del sistema: vos solo continuá con la recolección por donde ibas, sin repetir lo del producto.
 - Solo texto plano, sin markdown.
- 
-POST-RECOLECCIÓN: cuando ya tenés los 8 campos y el usuario sigue escribiendo, respondé sus preguntas de seguimiento y mantené siguiente_agente: "leads". Si el usuario se despide usá este texto exacto: "Gracias por comunicarte con el asistente virtual de Ecovita. Quedo a disposición para lo que necesites. Hasta la próxima 👋" y poné siguiente_agente: "none".
- 
+
+POST-RECOLECCIÓN: cuando ya tenés los 8 campos y el usuario sigue escribiendo, respondé sus preguntas de seguimiento. Si el usuario se despide usá este texto exacto: "Gracias por comunicarte con el asistente virtual de Ecovita. Quedo a disposición para lo que necesites. Hasta la próxima 👋"
+
 RESPUESTA JSON OBLIGATORIA después de cada mensaje (ManyChat lo lee, el usuario NO lo ve):
 ---JSON---
-{"nombre_contacto_vendedor": "", "nombre_comercio": "", "mail_comercio_vendedor": "", "ciudad_comercio_vendedor": "", "direccion_potencial_cliente": "", "tipo_empresa_vendedor": "", "volumen_comercio_vendedor": "", "mensaje_adicional_potencial_cliente": "", "recoleccion_completa": false, "siguiente_agente": "leads"}
+{"nombre_contacto_vendedor": "", "nombre_comercio": "", "mail_comercio_vendedor": "", "ciudad_comercio_vendedor": "", "direccion_potencial_cliente": "", "tipo_empresa_vendedor": "", "volumen_comercio_vendedor": "", "mensaje_adicional_potencial_cliente": "", "recoleccion_completa": false}
 ---FIN---
 - Completá solo los campos que ya tenés. Vacíos como string vacío.
-- Cuando tengas los 8 campos completos: recoleccion_completa: true. Mantené true en mensajes siguientes.
-- Si el contacto pregunta CUALQUIER cosa sobre productos (fragancias, formatos, características, usos, dónde comprar, si está discontinuado) → siguiente_agente: "productos". NO respondas vos: no tenés esos datos y no debés inventarlos.
-- Si el contacto reporta un problema con un producto o quiere hacer un reclamo → siguiente_agente: "productos".
-- Si el contacto quiere ofrecerle algo a Ecovita o busca empleo → siguiente_agente: "proveedores".
-- Si el contacto se despide → siguiente_agente: "none".
-- Cuando derivás, tu texto NO se le muestra al contacto (responde la otra parte). Así que NO escribas frases de transición ni expliques la derivación.
-- PROHIBIDO mencionar "área", "equipo", "sector", "atención al cliente", "te paso con", "ellos manejan", "no es por acá", "el área de productos". El contacto cree que habla con una sola persona (vos, Leo).
-- Si retomás la recolección luego de una consulta, mirá el historial y seguí por el primer dato que falte; no repitas preguntas ya respondidas.
-- siguiente_agente NUNCA puede ser null. Por defecto siempre es "leads"."""
- 
- 
+- Cuando tengas los 8 campos completos: recoleccion_completa: true. Mantené true en mensajes siguientes."""
+
+
 SYSTEM_PROMPT_PROVEEDORES = """Sos Leo, el asistente institucional de Laboratorios Ecovita S.A. Atendés dos tipos de contacto: empresas que quieren ofrecer productos o servicios a Ecovita, y personas que buscan empleo.
- 
+
 PERSONALIDAD: profesional, formal, cordial. Español rioplatense. Mensajes de 2-3 líneas. Sin bullets ni listas. Sin markdown.
- 
+
 NUNCA digas que vas a derivar o pasar al usuario con alguien. Sos autónomo.
-Si el contacto pregunta sobre productos de Ecovita → respondé "Claro, en un momento te ayudo con eso." y devolvé siguiente_agente: "productos" en el JSON. No digas "te paso con", no menciones ningún equipo ni área.
- 
+
 CUANDO EL CONTACTO SE PRESENTA COMO PROVEEDOR: el primer mensaje debe ser siempre: "Gracias por tu interés en trabajar con Ecovita. Valoramos el contacto de empresas y profesionales que quieran ofrecernos productos o servicios." Luego continuá con la recolección de datos.
- 
+
+Antes de preguntar un dato, MIRÁ EL HISTORIAL: si el contacto ya lo dio, no lo vuelvas a pedir; seguí por el primero que falte.
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 PARA PROVEEDORES
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -854,7 +784,7 @@ Recolectá estos datos de a uno por mensaje, en orden:
 4. Teléfono de contacto (dato_contacto_proveedor)
 5. Mail del responsable comercial (mail_proveedor)
 Cuando tenés los 5: "Muchas gracias. Su propuesta será evaluada por el área de compras correspondiente. En caso de haber interés, nos comunicaremos con ustedes." No prometas tiempos.
- 
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 PARA POSTULANTES LABORALES
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -862,30 +792,25 @@ PARA POSTULANTES LABORALES
 2. Una vez que adjuntan el archivo, guardá el link (cv_archivo_2).
 3. Invitalos a dejar un comentario adicional (comentario_cv).
 4. "Muchas gracias. Su CV será revisado por el área de Recursos Humanos." Cerrá cordialmente.
- 
+
 REGLAS GENERALES:
 - No hagas promesas sobre tiempos ni resultados.
 - No des información sobre proveedores actuales ni estructura interna.
+- NO des información sobre productos ni tomes reclamos. Si en el historial ves que el contacto preguntó algo de productos o reportó un reclamo, ESO ya lo respondió otra parte del sistema: vos solo continuá con la recolección por donde ibas.
 - Siempre incluí el JSON del tipo de contacto que estás atendiendo.
- 
-POST-RECOLECCIÓN: cuando ya terminaste y el usuario sigue escribiendo, respondé sus preguntas de seguimiento y mantené siguiente_agente: "proveedores". Si el usuario se despide usá este texto exacto: "Gracias por comunicarte con el asistente virtual de Ecovita. Quedo a disposición para lo que necesites. Hasta la próxima 👋" y poné siguiente_agente: "none".
- 
+
+POST-RECOLECCIÓN: cuando ya terminaste y el usuario sigue escribiendo, respondé sus preguntas de seguimiento. Si el usuario se despide usá este texto exacto: "Gracias por comunicarte con el asistente virtual de Ecovita. Quedo a disposición para lo que necesites. Hasta la próxima 👋"
+
 RESPUESTA JSON OBLIGATORIA después de cada mensaje (ManyChat lo lee, el usuario NO lo ve):
 ---JSON---
-{"tipo": "", "nombre_proveedor": "", "producto_o_servicio_proveedor": "", "redes_proveedor": "", "dato_contacto_proveedor": "", "mail_proveedor": "", "cv_archivo_2": "", "comentario_cv": "", "recoleccion_completa": false, "siguiente_agente": "proveedores"}
+{"tipo": "", "nombre_proveedor": "", "producto_o_servicio_proveedor": "", "redes_proveedor": "", "dato_contacto_proveedor": "", "mail_proveedor": "", "cv_archivo_2": "", "comentario_cv": "", "recoleccion_completa": false}
 ---FIN---
 - Para proveedores: tipo="proveedor". Para postulantes: tipo="postulante".
 - Completá solo los campos relevantes.
-- Cuando terminés: recoleccion_completa: true. Mantené true en mensajes siguientes.
-- Si el contacto pregunta cualquier cosa sobre productos (fragancias, formatos, características, usos, dónde comprar) → siguiente_agente: "productos".
-- Si el contacto reporta un problema con un producto o quiere hacer un RECLAMO (vino fallado, sin fragancia, defectuoso) → siguiente_agente: "productos". El reclamo se toma en esta misma conversación; NUNCA lo mandes a "atención al cliente", al "sitio web" ni a "otro canal".
-- Si el contacto quiere comprar en cantidad, revender o tiene un comercio → siguiente_agente: "leads".
-- Si el contacto se despide → siguiente_agente: "none".
-- Cuando derivás, tu texto NO se le muestra al contacto (responde la otra parte). NO escribas transición ni expliques nada.
-- PROHIBIDO mencionar "área", "equipo", "sector", "atención al cliente", "te paso con", "ellos manejan", "no es por acá". El contacto cree que habla con una sola persona (vos, Leo).
-- siguiente_agente NUNCA puede ser null. Por defecto siempre es "proveedores"."""
+- Cuando terminés: recoleccion_completa: true. Mantené true en mensajes siguientes."""
+
 # ─────────────────────────────────────────────
-# DISPATCHER — alternancia entre agentes sin costuras
+# CEREBRO — router clasifica, ejecuta el agente correcto, maneja tarea_pendiente
 # ─────────────────────────────────────────────
 
 SYSTEM_PROMPTS = {
@@ -897,283 +822,159 @@ SYSTEM_PROMPTS = {
 AGENTES_CONTENIDO = ("productos", "leads", "proveedores")
 
 
-async def resolver_agente(agente: str, historial: list, max_saltos: int = 2):
-    """Corre el agente activo. Si detecta que el mensaje es de otro agente
-    (siguiente_agente distinto), re-enruta el MISMO mensaje al destino para que
-    sea ÉL quien responda. Ningún agente contesta fuera de su área.
-    Devuelve (agente_final, texto, json_data)."""
-    actual = agente if agente in AGENTES_CONTENIDO else "productos"
-    saltos = 0
-    while True:
-        raw = await llamar_claude(SYSTEM_PROMPTS[actual], historial, max_tokens=1200)
-        if not raw:
-            return actual, None, {}
-        texto, json_data = parsear_respuesta(raw)
-        siguiente = (json_data.get("siguiente_agente") or actual).strip().lower()
-        if siguiente in AGENTES_CONTENIDO and siguiente != actual and saltos < max_saltos:
-            actual = siguiente
-            saltos += 1
-            continue
-        return actual, texto, json_data
+async def clasificar_ruta(historial: list, mensaje: str, tarea: str) -> str:
+    """El router decide qué área responde ESTE mensaje. Devuelve una de:
+    PRODUCTOS, LEADS, PROVEEDORES, CONTINUAR, CHARLA."""
+    hist_router = historial[-6:] if len(historial) > 6 else historial
+    contexto = ""
+    if tarea in AGENTES_CONTENIDO:
+        contexto = f"[CONTEXTO: hay una recolección de datos de '{tarea}' en curso. Si el mensaje aporta un dato pedido o confirma, es CONTINUAR; si cambia de tema, poné la ruta del nuevo tema.]"
+    contenido = f"{contexto}\nMensaje del contacto: {mensaje}".strip()
+    msgs = hist_router + [{"role": "user", "content": contenido}]
+    raw = await llamar_claude(SYSTEM_PROMPT_ROUTER, msgs, max_tokens=60)
+    _, jr = parsear_respuesta(raw)
+    ruta = (jr.get("ruta") or "CHARLA").upper().strip()
+    if ruta not in ("PRODUCTOS", "LEADS", "PROVEEDORES", "CONTINUAR", "CHARLA"):
+        ruta = "CHARLA"
+    return ruta
 
 
-async def procesar_mensaje(agente_inicial: str, contact_id: str, mensaje: str):
-    """Lógica común a los 3 agentes: historial + handoff inmediato + guardado +
-    actualización de agente_activo. Devuelve (texto, json_data, siguiente_agente)
-    o None si Claude no respondió."""
+async def manejar_turno(contact_id: str, mensaje: str):
+    """Punto único de procesamiento. Devuelve (agente, texto, json_data) o (None, None, {})."""
     historial = await get_historial(contact_id)
     if len(historial) > 40:
         historial = historial[-40:]
+    tarea = await get_tarea_pendiente(contact_id)
+
+    # 1) El router decide la ruta de ESTE mensaje
+    ruta = await clasificar_ruta(historial, mensaje, tarea)
+
+    # 2) Resolver qué agente ejecuta
+    if ruta == "CONTINUAR":
+        agente = tarea if tarea in AGENTES_CONTENIDO else "productos"
+    elif ruta in ("PRODUCTOS", "LEADS", "PROVEEDORES"):
+        agente = ruta.lower()
+    else:  # CHARLA
+        agente = "charla"
+
+    # 3) Ejecutar el agente elegido
     historial.append({"role": "user", "content": mensaje})
+    if agente == "charla":
+        raw = await llamar_claude(SYSTEM_PROMPT_CHARLA, historial, max_tokens=300)
+    else:
+        raw = await llamar_claude(SYSTEM_PROMPTS[agente], historial, max_tokens=1200)
 
-    agente_final, texto, json_data = await resolver_agente(agente_inicial, historial)
-    if texto is None:
-        return None
+    if not raw:
+        return None, None, {}
 
+    texto, json_data = parsear_respuesta(raw)
     historial.append({"role": "assistant", "content": texto})
     await guardar_historial(contact_id, historial)
-    await guardar_log(contact_id, agente_final, mensaje, texto)
+    await guardar_log(contact_id, agente, mensaje, texto)
 
-    siguiente_raw = (json_data.get("siguiente_agente") or agente_final).strip().lower()
-    nuevo = "none" if siguiente_raw == "none" else agente_final
+    # 4) Mantener tarea_pendiente (lo que sobrevive a los desvíos)
+    if agente == "leads":
+        await set_tarea_pendiente(contact_id, "" if json_data.get("recoleccion_completa") else "leads")
+    elif agente == "proveedores":
+        await set_tarea_pendiente(contact_id, "" if json_data.get("recoleccion_completa") else "proveedores")
+    elif agente == "productos":
+        if json_data.get("reclamo_completo"):
+            await set_tarea_pendiente(contact_id, "")
+        elif (json_data.get("nombre_producto_defectuoso") or json_data.get("n_lote_producto_defectuoso")
+              or json_data.get("descripcion_problema_reclamos")):
+            await set_tarea_pendiente(contact_id, "productos")
+        # productos sin reclamo: NO toca tarea (preserva una recolección leads/proveedores pendiente)
+    # charla: no toca tarea
 
-    if nuevo == "none":
-        await set_agente_activo(contact_id, "none")
-    elif nuevo != agente_inicial:
-        await set_agente_activo(contact_id, nuevo)
-        await agregar_etiqueta(contact_id, nuevo)
+    # 5) Tracking (etiqueta + intencion) solo para agentes reales
+    if agente in AGENTES_CONTENIDO:
+        await set_agente_activo(contact_id, agente)
+        await agregar_etiqueta(contact_id, agente)
         async with httpx.AsyncClient() as client:
             await client.patch(
                 f"{SUPABASE_URL}/rest/v1/conversaciones",
                 headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": "application/json"},
                 params={"contact_id": f"eq.{contact_id}"},
-                json={"intencion_contacto": nuevo.upper()}
+                json={"intencion_contacto": agente.upper()}
             )
 
-    return texto, json_data, nuevo 
- 
+    return agente, texto, json_data
+
+
+def _respuesta_unificada(agente, texto, json_data):
+    """Arma un único JSON con TODOS los campos posibles. ManyChat lee 'respuesta'
+    (o 'mensaje') para mostrar el texto, y los Custom Fields que necesite."""
+    jd = json_data or {}
+    return {
+        "respuesta": texto,
+        "mensaje": texto,
+        "agente": agente,
+        "agente_activo": agente,
+        # reclamos (productos)
+        "reclamo_completo": jd.get("reclamo_completo", False),
+        "nombre_producto_defectuoso": jd.get("nombre_producto_defectuoso", ""),
+        "n_lote_producto_defectuoso": jd.get("n_lote_producto_defectuoso", ""),
+        "mail_reclamo_cliente": jd.get("mail_reclamo_cliente", ""),
+        "descripcion_problema_reclamos": jd.get("descripcion_problema_reclamos", ""),
+        # leads
+        "recoleccion_completa_leads": jd.get("recoleccion_completa", False) if agente == "leads" else False,
+        "nombre_contacto_vendedor": jd.get("nombre_contacto_vendedor", ""),
+        "nombre_comercio": jd.get("nombre_comercio", ""),
+        "mail_comercio_vendedor": jd.get("mail_comercio_vendedor", ""),
+        "ciudad_comercio_vendedor": jd.get("ciudad_comercio_vendedor", ""),
+        "direccion_potencial_cliente": jd.get("direccion_potencial_cliente", ""),
+        "tipo_empresa_vendedor": jd.get("tipo_empresa_vendedor", ""),
+        "volumen_comercio_vendedor": jd.get("volumen_comercio_vendedor", ""),
+        "mensaje_adicional_potencial_cliente": jd.get("mensaje_adicional_potencial_cliente", ""),
+        # proveedores
+        "recoleccion_completa_proveedores": jd.get("recoleccion_completa", False) if agente == "proveedores" else False,
+        "tipo": jd.get("tipo", ""),
+        "nombre_proveedor": jd.get("nombre_proveedor", ""),
+        "producto_o_servicio_proveedor": jd.get("producto_o_servicio_proveedor", ""),
+        "redes_proveedor": jd.get("redes_proveedor", ""),
+        "dato_contacto_proveedor": jd.get("dato_contacto_proveedor", ""),
+        "mail_proveedor": jd.get("mail_proveedor", ""),
+        "cv_archivo_2": jd.get("cv_archivo_2", ""),
+        "comentario_cv": jd.get("comentario_cv", ""),
+    }
+
+
+async def _procesar_endpoint(request: Request):
+    body = await request.json()
+    contact_id = str(body.get("contact_id", ""))
+    mensaje = body.get("mensaje_usuario", "")
+    if not contact_id or not mensaje:
+        return JSONResponse(_respuesta_unificada("charla", "No pude procesar tu mensaje. Intentá de nuevo.", {}))
+    agente, texto, json_data = await manejar_turno(contact_id, mensaje)
+    if texto is None:
+        return JSONResponse(_respuesta_unificada("charla", "Tardé más de lo esperado. ¿Podés repetir tu mensaje?", {}))
+    return JSONResponse(_respuesta_unificada(agente, texto, json_data))
+
+
 # ─────────────────────────────────────────────
-# ENDPOINTS
+# ENDPOINTS — todos pasan por el mismo cerebro (manejar_turno)
 # ─────────────────────────────────────────────
- 
+
 @app.get("/")
 async def health():
-    return {"status": "Leo activo — Ecovita Bot 2.0"}
- 
- 
+    return {"status": "Leo activo — Ecovita Bot 2.0 (router centralizado)"}
+
+
 @app.post("/orquestador")
 async def orquestador(request: Request):
-    body = await request.json()
-    contact_id = str(body.get("contact_id", ""))
-    mensaje = body.get("mensaje_usuario", "")
- 
-    if not contact_id or not mensaje:
-        return JSONResponse({"tipo": "error", "mensaje": "Faltan datos."})
- 
-    # Contexto conversacional: últimos 10 mensajes (recomendación LivePerson)
-    historial = await get_historial(contact_id)
-    if len(historial) > 10:
-        historial = historial[-10:]
-    mensajes = historial + [{"role": "user", "content": mensaje}]
-    respuesta = await llamar_claude(SYSTEM_PROMPT_ORQUESTADOR, mensajes, max_tokens=400)
+    return await _procesar_endpoint(request)
 
-    if not respuesta:
-        return JSONResponse({
-            "tipo": "pregunta",
-            "agente_activo": "none",
-            "intencion_contacto": None,
-            "mensaje": "Perdoná, no te llegué a entender. ¿Me lo repetís?"
-        })
 
-    # Parsear el JSON {ruta, mensaje} del orquestador
-    _, json_data = parsear_respuesta(respuesta)
-    ruta = (json_data.get("ruta") or "NINGUNA").upper().strip()
-    mensaje_contacto = (json_data.get("mensaje") or "").strip()
-
-    # Fallback: si el modelo no devolvió JSON parseable, usar texto plano
-    if not mensaje_contacto:
-        texto_plano = respuesta.split("---JSON---")[0].strip()
-        mensaje_contacto = texto_plano or "¿En qué te puedo ayudar?"
-
-    # Normalizar ruta
-    if ruta not in ["LEADS", "PRODUCTOS", "PROVEEDORES", "NINGUNA"]:
-        ruta = "NINGUNA"
-
-    # SANITIZACIÓN: el contacto nunca debe ver las palabras de ruta
-    mensaje_contacto = sanitizar_mensaje(mensaje_contacto)
-
-    # Si tras sanitizar quedó vacío, usar un mensaje de transición seguro según la ruta
-    if not mensaje_contacto:
-        if ruta == "LEADS":
-            mensaje_contacto = "¡Buenísimo! 😊 Te hago unas preguntas para dejar todo listo. ¿Cuál es tu nombre completo?"
-        elif ruta == "PROVEEDORES":
-            mensaje_contacto = "¡Gracias por escribirnos! Contame un poco más así te ayudo."
-        else:
-            mensaje_contacto = "¡Claro! Contame, ¿en qué te puedo ayudar? 😊"
-
-    # Contador de turnos sin clasificar (para ruta por defecto)
-    turnos_sin_clasificar = await get_turnos_orquestador(contact_id)
-
-    if ruta == "NINGUNA":
-        # Si ya hubo 2 repreguntas y sigue sin aclarar → derivar a PRODUCTOS por defecto
-        if turnos_sin_clasificar >= 2:
-            ruta = "PRODUCTOS"
-        else:
-            await set_turnos_orquestador(contact_id, turnos_sin_clasificar + 1)
-            historial.append({"role": "user", "content": mensaje})
-            historial.append({"role": "assistant", "content": mensaje_contacto})
-            await guardar_historial(contact_id, historial)
-            return JSONResponse({
-                "tipo": "pregunta",
-                "agente_activo": "none",
-                "intencion_contacto": None,
-                "mensaje": mensaje_contacto
-            })
-
-    # Clasificó: setear agente y resetear contador
-    categoria = ruta
-    agente = categoria.lower()
-    await set_agente_activo(contact_id, agente)
-    await set_turnos_orquestador(contact_id, 0)
-
-    async with httpx.AsyncClient() as client:
-        await client.patch(
-            f"{SUPABASE_URL}/rest/v1/conversaciones",
-            headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": "application/json"},
-            params={"contact_id": f"eq.{contact_id}"},
-            json={"intencion_contacto": categoria}
-        )
-    await agregar_etiqueta(contact_id, agente)
-
-    # Guardar el turno en el historial (solo el mensaje del usuario; la respuesta
-    # la genera y guarda el endpoint del agente correspondiente).
-    
-    # El orquestador SOLO clasifica y setea agente_activo. NO manda contenido.
-    # ManyChat, en el mismo flujo, detecta agente_activo y llama al endpoint del agente,
-    # que es quien genera la primera respuesta. Así se evita el doble mensaje
-    # (transición del orquestador + respuesta del agente) para los tres agentes.
-    return JSONResponse({
-        "tipo": "categoria",
-        "agente_activo": agente,
-        "intencion_contacto": categoria,
-        "mensaje": None
-    })
- 
- 
 @app.post("/productos")
 async def productos(request: Request):
-    body = await request.json()
-    contact_id = str(body.get("contact_id", ""))
-    mensaje = body.get("mensaje_usuario", "")
-
-    if not contact_id or not mensaje:
-        return JSONResponse({
-            "respuesta": "No pude procesar tu mensaje. Intentá de nuevo.",
-            "siguiente_agente": "productos", "reclamo_completo": False,
-            "nombre_producto_defectuoso": "", "n_lote_producto_defectuoso": "",
-            "mail_reclamo_cliente": "", "descripcion_problema_reclamos": ""
-        })
-
-    resultado = await procesar_mensaje("productos", contact_id, mensaje)
-    if resultado is None:
-        return JSONResponse({
-            "respuesta": "Tardé más de lo esperado. ¿Podés repetir tu mensaje?",
-            "siguiente_agente": "productos", "reclamo_completo": False,
-            "nombre_producto_defectuoso": "", "n_lote_producto_defectuoso": "",
-            "mail_reclamo_cliente": "", "descripcion_problema_reclamos": ""
-        })
-    texto, json_data, siguiente_agente = resultado
-
-    return JSONResponse({
-        "respuesta": texto,
-        "siguiente_agente": siguiente_agente,
-        "reclamo_completo": json_data.get("reclamo_completo", False),
-        "nombre_producto_defectuoso": json_data.get("nombre_producto_defectuoso", ""),
-        "n_lote_producto_defectuoso": json_data.get("n_lote_producto_defectuoso", ""),
-        "mail_reclamo_cliente": json_data.get("mail_reclamo_cliente", ""),
-        "descripcion_problema_reclamos": json_data.get("descripcion_problema_reclamos", "")
-    })
+    return await _procesar_endpoint(request)
 
 
 @app.post("/leads")
 async def leads(request: Request):
-    body = await request.json()
-    contact_id = str(body.get("contact_id", ""))
-    mensaje = body.get("mensaje_usuario", "")
-
-    if not contact_id or not mensaje:
-        return JSONResponse({
-            "respuesta": "No pude procesar tu mensaje. Intentá de nuevo.",
-            "siguiente_agente": "leads", "recoleccion_completa_leads": False,
-            "nombre_contacto_vendedor": "", "nombre_comercio": "",
-            "mail_comercio_vendedor": "", "ciudad_comercio_vendedor": "",
-            "direccion_potencial_cliente": "", "tipo_empresa_vendedor": "",
-            "volumen_comercio_vendedor": "", "mensaje_adicional_potencial_cliente": ""
-        })
-
-    resultado = await procesar_mensaje("leads", contact_id, mensaje)
-    if resultado is None:
-        return JSONResponse({
-            "respuesta": "Tardé más de lo esperado. ¿Podés repetir tu mensaje?",
-            "siguiente_agente": "leads", "recoleccion_completa_leads": False,
-            "nombre_contacto_vendedor": "", "nombre_comercio": "",
-            "mail_comercio_vendedor": "", "ciudad_comercio_vendedor": "",
-            "direccion_potencial_cliente": "", "tipo_empresa_vendedor": "",
-            "volumen_comercio_vendedor": "", "mensaje_adicional_potencial_cliente": ""
-        })
-    texto, json_data, siguiente_agente = resultado
-
-    return JSONResponse({
-        "respuesta": texto,
-        "siguiente_agente": siguiente_agente,
-        "recoleccion_completa_leads": json_data.get("recoleccion_completa", False),
-        "nombre_contacto_vendedor": json_data.get("nombre_contacto_vendedor", ""),
-        "nombre_comercio": json_data.get("nombre_comercio", ""),
-        "mail_comercio_vendedor": json_data.get("mail_comercio_vendedor", ""),
-        "ciudad_comercio_vendedor": json_data.get("ciudad_comercio_vendedor", ""),
-        "direccion_potencial_cliente": json_data.get("direccion_potencial_cliente", ""),
-        "tipo_empresa_vendedor": json_data.get("tipo_empresa_vendedor", ""),
-        "volumen_comercio_vendedor": json_data.get("volumen_comercio_vendedor", ""),
-        "mensaje_adicional_potencial_cliente": json_data.get("mensaje_adicional_potencial_cliente", "")
-    })
+    return await _procesar_endpoint(request)
 
 
 @app.post("/proveedores")
 async def proveedores(request: Request):
-    body = await request.json()
-    contact_id = str(body.get("contact_id", ""))
-    mensaje = body.get("mensaje_usuario", "")
-
-    if not contact_id or not mensaje:
-        return JSONResponse({
-            "respuesta": "No pude procesar tu mensaje. Intentá de nuevo.",
-            "siguiente_agente": "proveedores", "recoleccion_completa_proveedores": False,
-            "tipo": "", "nombre_proveedor": "", "producto_o_servicio_proveedor": "",
-            "redes_proveedor": "", "dato_contacto_proveedor": "", "mail_proveedor": "",
-            "cv_archivo_2": "", "comentario_cv": ""
-        })
-
-    resultado = await procesar_mensaje("proveedores", contact_id, mensaje)
-    if resultado is None:
-        return JSONResponse({
-            "respuesta": "Tardé más de lo esperado. ¿Podés repetir tu mensaje?",
-            "siguiente_agente": "proveedores", "recoleccion_completa_proveedores": False,
-            "tipo": "", "nombre_proveedor": "", "producto_o_servicio_proveedor": "",
-            "redes_proveedor": "", "dato_contacto_proveedor": "", "mail_proveedor": "",
-            "cv_archivo_2": "", "comentario_cv": ""
-        })
-    texto, json_data, siguiente_agente = resultado
-
-    return JSONResponse({
-        "respuesta": texto,
-        "siguiente_agente": siguiente_agente,
-        "recoleccion_completa_proveedores": json_data.get("recoleccion_completa", False),
-        "tipo": json_data.get("tipo", ""),
-        "nombre_proveedor": json_data.get("nombre_proveedor", ""),
-        "producto_o_servicio_proveedor": json_data.get("producto_o_servicio_proveedor", ""),
-        "redes_proveedor": json_data.get("redes_proveedor", ""),
-        "dato_contacto_proveedor": json_data.get("dato_contacto_proveedor", ""),
-        "mail_proveedor": json_data.get("mail_proveedor", ""),
-        "cv_archivo_2": json_data.get("cv_archivo_2", ""),
-        "comentario_cv": json_data.get("comentario_cv", "")
-    })
+    return await _procesar_endpoint(request)
